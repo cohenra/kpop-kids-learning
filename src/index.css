@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+/* ─── K-POP Color Tokens ──────────────────────────────────────────────────── */
+@theme {
+  --color-kpop-purple: #7C3AED;
+  --color-kpop-pink: #EC4899;
+  --color-kpop-cyan: #06B6D4;
+  --color-kpop-gold: #F59E0B;
+  --color-kpop-bg: #1E1B2E;
+  --color-kpop-card: #2D2A4A;
+  --color-kpop-text: #F9FAFB;
+
+  --font-heading: 'Fredoka One', 'Nunito', sans-serif;
+  --font-body: 'Nunito', sans-serif;
+  --font-hebrew: 'Heebo', 'Nunito', sans-serif;
+}
+
+/* ─── Base Styles ─────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  background-color: #1E1B2E;
+  color: #F9FAFB;
+  font-family: 'Nunito', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  overscroll-behavior: none;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+[dir="rtl"] body,
+[dir="rtl"] {
+  font-family: 'Heebo', 'Nunito', sans-serif;
+}
+
+/* ─── Scrollable areas ────────────────────────────────────────────────────── */
+.scrollable {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ─── Glow utilities ──────────────────────────────────────────────────────── */
+.glow-purple { box-shadow: 0 0 20px rgba(124, 58, 237, 0.6); }
+.glow-pink   { box-shadow: 0 0 20px rgba(236, 72, 153, 0.6); }
+.glow-cyan   { box-shadow: 0 0 20px rgba(6, 182, 212, 0.6); }
+.glow-gold   { box-shadow: 0 0 20px rgba(245, 158, 11, 0.6); }
+
+/* ─── Touch feedback ──────────────────────────────────────────────────────── */
+.tap-active:active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease;
+}
+
+/* ─── Star particle animation (CSS only, no canvas) ──────────────────────── */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.7); }
+  50%       { opacity: 0.9;  transform: scale(1.3); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(124, 58, 237, 0.4); }
+  50%       { box-shadow: 0 0 35px rgba(124, 58, 237, 0.9), 0 0 70px rgba(236, 72, 153, 0.5); }
+}
+
+@keyframes bounce-gentle {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes spin-star {
+  from { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.2); }
+  to   { transform: rotate(360deg) scale(1); }
+}
+
+.animate-twinkle       { animation: twinkle 2s ease-in-out infinite; }
+.animate-float         { animation: float 3s ease-in-out infinite; }
+.animate-pulse-glow    { animation: pulse-glow 2.5s ease-in-out infinite; }
+.animate-bounce-gentle { animation: bounce-gentle 2s ease-in-out infinite; }
+.animate-slide-up      { animation: slide-up 0.4s ease-out forwards; }
+.animate-scale-in      { animation: scale-in 0.3s ease-out forwards; }
+.animate-spin-star     { animation: spin-star 4s linear infinite; }
+
+.shimmer-text {
+  background: linear-gradient(90deg, #EC4899, #F59E0B, #06B6D4, #7C3AED, #EC4899);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+
+/* ─── Safe area support ───────────────────────────────────────────────────── */
+.safe-top    { padding-top: max(1rem, env(safe-area-inset-top)); }
+.safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+
+/* ─── RTL number display fix ──────────────────────────────────────────────── */
+[dir="rtl"] .ltr-number { direction: ltr; unicode-bidi: embed; }
