@@ -36,7 +36,7 @@ export const ROOMS: Room[] = [
     emoji: '🎵',
     color: '#06B6D4',
     glowColor: 'rgba(6, 182, 212, 0.4)',
-    available: false,
+    available: true,
   },
   {
     id: 'social',
@@ -57,7 +57,7 @@ export const ROOMS: Room[] = [
     emoji: '🧩',
     color: '#8B5CF6',
     glowColor: 'rgba(139, 92, 246, 0.4)',
-    available: false,
+    available: true,
   },
 ]
 

@@ -10,6 +10,8 @@ import type { RoomId } from '../data/games'
 // Room-specific implementations
 import { LiteracyRoom } from '../components/Games/Literacy/LiteracyRoom'
 import { MathRoom } from '../components/Games/Math/MathRoom'
+import { MusicRoom } from '../components/Games/Music/MusicRoom'
+import { LogicRoom } from '../components/Games/Logic/LogicRoom'
 
 // ─── Game Room dispatcher ─────────────────────────────────────────────────────
 //
@@ -39,6 +41,12 @@ export function GameRoom() {
   }
   if (roomId === 'math') {
     return <MathRoom />
+  }
+  if (roomId === 'music') {
+    return <MusicRoom />
+  }
+  if (roomId === 'logic') {
+    return <LogicRoom />
   }
 
   // ── Placeholder for rooms not yet built ───────────────────────────────────

@@ -60,6 +60,32 @@ export interface Strings {
   wellDone: string
   amazing: string
   keepGoing: string
+
+  // Games
+  games: {
+    rhythmTap: string
+    rhythmTapIntro: string
+    instrumentRecognition: string
+    instrumentRecognitionIntro: string
+    playAgain: string
+    melodySequence: string
+    melodySequenceWatch: string
+    melodySequenceRepeat: string
+    freePiano: string
+    freePianoIntro: string
+    beautifulMusic: string
+    startRecording: string
+    stopRecording: string
+  }
+  round: string
+  start: string
+  roundOver: string
+  sparksThisRound: string
+  nextRound: string
+  finishGame: string
+  goodJob: string
+  sparksEarned: string
+  score: string
 }
 
 const he: Strings = {
@@ -115,6 +141,31 @@ const he: Strings = {
   wellDone: 'כל הכבוד! ⭐',
   amazing: 'מדהים! 🌟',
   keepGoing: 'המשיכי! 💫',
+
+  games: {
+    rhythmTap: 'הקשה לקצב',
+    rhythmTapIntro: 'הקשי לקצב והקישי בזמן!',
+    instrumentRecognition: 'זיהוי כלים',
+    instrumentRecognitionIntro: 'איזה כלי את שומעת?',
+    playAgain: 'נגני שוב',
+    melodySequence: 'סדר מנגינה',
+    melodySequenceWatch: 'צפי ברצף',
+    melodySequenceRepeat: 'חזרי על הרצף',
+    freePiano: 'פסנתר חופשי',
+    freePianoIntro: 'נגני מוזיקה משלך!',
+    beautifulMusic: 'מוזיקה יפה!',
+    startRecording: 'התחל הקלטה',
+    stopRecording: 'עצור הקלטה',
+  },
+  round: 'סיבוב',
+  start: 'התחל',
+  roundOver: 'הסיבוב נגמר!',
+  sparksThisRound: 'ניצוצות בסיבוב: {count}',
+  nextRound: 'לסיבוב הבא',
+  finishGame: 'סיום המשחק',
+  goodJob: 'כל הכבוד!',
+  sparksEarned: 'הרווחת {count} ניצוצות!',
+  score: 'ניקוד',
 }
 
 const en: Strings = {
@@ -170,6 +221,31 @@ const en: Strings = {
   wellDone: 'Well Done! ⭐',
   amazing: 'Amazing! 🌟',
   keepGoing: 'Keep Going! 💫',
+
+  games: {
+    rhythmTap: 'Rhythm Tap',
+    rhythmTapIntro: 'Listen to the beat and tap in time!',
+    instrumentRecognition: 'Instrument Recognition',
+    instrumentRecognitionIntro: 'Which instrument do you hear?',
+    playAgain: 'Play Sound Again',
+    melodySequence: 'Melody Sequence',
+    melodySequenceWatch: 'Watch the sequence',
+    melodySequenceRepeat: 'Repeat the sequence',
+    freePiano: 'Free Piano',
+    freePianoIntro: 'Play some music!',
+    beautifulMusic: 'Beautiful music!',
+    startRecording: 'Start Recording',
+    stopRecording: 'Stop Recording',
+  },
+  round: 'Round',
+  start: 'Start',
+  roundOver: 'Round Over!',
+  sparksThisRound: 'Sparks this round: {count}',
+  nextRound: 'Next Round',
+  finishGame: 'Finish Game',
+  goodJob: 'Good Job!',
+  sparksEarned: 'You earned {count} sparks!',
+  score: 'Score',
 }
 
 export const strings: Record<Language, Strings> = { he, en }

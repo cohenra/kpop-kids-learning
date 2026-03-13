@@ -23,27 +23,27 @@ export function Character({
 }: CharacterProps) {
   // Eye expressions per mood
   const eyeVariants: Record<Mood, { scaleY: number; y: number }> = {
-    idle:        { scaleY: 1,    y: 0 },
-    happy:       { scaleY: 0.4,  y: 1 },
-    excited:     { scaleY: 1.2,  y: -1 },
-    thinking:    { scaleY: 0.8,  y: 0 },
-    encouraging: { scaleY: 0.5,  y: 1 },
+    idle: { scaleY: 1, y: 0 },
+    happy: { scaleY: 0.4, y: 1 },
+    excited: { scaleY: 1.2, y: -1 },
+    thinking: { scaleY: 0.8, y: 0 },
+    encouraging: { scaleY: 0.5, y: 1 },
   }
 
   // Mouth shape per mood (simplified as arc)
   const mouthPaths: Record<Mood, string> = {
-    idle:        'M 40 68 Q 50 74 60 68',
-    happy:       'M 37 66 Q 50 78 63 66',
-    excited:     'M 35 65 Q 50 82 65 65',
-    thinking:    'M 40 70 Q 50 70 60 70',
+    idle: 'M 40 68 Q 50 74 60 68',
+    happy: 'M 37 66 Q 50 78 63 66',
+    excited: 'M 35 65 Q 50 82 65 65',
+    thinking: 'M 40 70 Q 50 70 60 70',
     encouraging: 'M 38 67 Q 50 76 62 67',
   }
 
   const bounceAnimation = mood === 'idle'
     ? { y: [0, -6, 0] }
     : mood === 'happy' || mood === 'excited'
-    ? { y: [0, -12, 0, -8, 0], rotate: [-3, 3, -3, 3, 0] }
-    : { y: [0, -4, 0] }
+      ? { y: [0, -12, 0, -8, 0], rotate: [-3, 3, -3, 3, 0] }
+      : { y: [0, -4, 0] }
 
   const bounceDuration = mood === 'excited' ? 0.6 : 2
 
@@ -120,14 +120,12 @@ export function Character({
           <ellipse cx="50" cy="53" rx="2" ry="1.2" fill="#E8B89A" />
 
           {/* Mouth */}
-          <motion.path
+          <path
             d={mouthPaths[mood]}
             stroke="#C26B6B"
             strokeWidth="2"
             fill="none"
             strokeLinecap="round"
-            animate={{ d: mouthPaths[mood] }}
-            transition={{ duration: 0.3 }}
           />
 
           {/* Hair bow / accessory */}

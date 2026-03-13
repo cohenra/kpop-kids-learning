@@ -1,357 +1,210 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../../../context/AppContext'
-import { useAudio } from '../../../hooks/useAudio'
-import { useProgress } from '../../../hooks/useProgress'
-import { CelebrationOverlay } from '../CelebrationOverlay'
-import { EncouragementOverlay } from '../EncouragementOverlay'
-import { Character } from '../../Character/Character'
-import { SparkCounter } from '../../UI/SparkCounter'
 import { t } from '../../../i18n/strings'
-import {
-  getMelodyRounds,
-  NOTE_COLORS,
-  MELODY_SPARKS_PER_ROUND,
-  MELODY_SPARKS_BONUS,
-  type NoteColor,
-} from '../../../data/music'
+import { GameShell } from '../GameShell'
+import { useProgress } from '../../../hooks/useProgress'
+import type { MelodyNote } from '../../../data/music'
+import { MELODY_NOTES, shuffle } from '../../../data/music'
+import { Button } from '../../UI/Button'
 
-// ─── Game 3: Melody Sequence ──────────────────────────────────────────────────
-//
-// Computer plays a short note sequence on colored buttons → child repeats it.
-// Age 3: 2 notes, 3 colors
-// Age 5: up to 4 notes, 5 colors, grows per round
-// 8 rounds, +10 sparks per round, +40 completion bonus
+// --- Web Audio API ---
+let audioCtx: AudioContext | null = null;
+const getAC = () => {
+  if (!audioCtx) audioCtx = new window.AudioContext();
+  return audioCtx;
+};
 
-interface Props {
-  onComplete: (sparksEarned: number) => void
-  onBack: () => void
+const NOTE_FREQ: Record<string, number> = {
+  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.0,
+};
+
+function playNote(note: string, when: number) {
+  const ctx = getAC();
+  const t0 = when < ctx.currentTime ? ctx.currentTime : when;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(NOTE_FREQ[note] ?? 440, t0);
+  gain.gain.setValueAtTime(0.7, t0);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.4);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(t0);
+  osc.stop(t0 + 0.4);
 }
 
-type Phase = 'watching' | 'playing' | 'result'
-
-// ── Web Audio tone ────────────────────────────────────────────────────────────
-
-function playNote(frequency: number, duration = 0.35) {
-  try {
-    const ctx = new AudioContext()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'sine'
-    osc.frequency.value = frequency
-    gain.gain.setValueAtTime(0.001, ctx.currentTime)
-    gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.02)
-    gain.gain.setValueAtTime(0.35, ctx.currentTime + duration - 0.06)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + duration)
-  } catch { /* silent */ }
+interface MelodySequenceProps {
+  onComplete: (sparks: number) => void;
+  onBack: () => void;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+type GameState = 'watching' | 'playing' | 'answered' | 'finished';
 
-export function MelodySequence({ onComplete, onBack }: Props) {
-  const { language, isRTL, age, activeProfile } = useApp()
-  const { say, playCorrect, playWrong, playSpark } = useAudio()
-  const { completeGame } = useProgress()
-  const s = t(language)
+export function MelodySequence({ onComplete, onBack }: MelodySequenceProps) {
+  const { age, language, addSparks } = useApp();
+  const { completeGame } = useProgress();
+  const s = t(language);
 
-  const rounds = getMelodyRounds(age)
-  const totalRounds = rounds.length
-  const notePool = age === 3 ? NOTE_COLORS.slice(0, 3) : NOTE_COLORS
+  const settings = age === 3
+    ? { minSeq: 2, maxSeq: 3, numColors: 3, sparksPerCorrect: 15, rounds: 5 }
+    : { minSeq: 2, maxSeq: 4, numColors: 5, sparksPerCorrect: 20, rounds: 8 };
 
-  const [roundIdx, setRoundIdx] = useState(0)
-  const [phase, setPhase] = useState<Phase>('watching')
-  const [litNoteId, setLitNoteId] = useState<string | null>(null)
-  const [playerInput, setPlayerInput] = useState<NoteColor[]>([])
-  const [sparksEarned, setSparksEarned] = useState(0)
-  const [showCelebration, setShowCelebration] = useState(false)
-  const [showEncouragement, setShowEncouragement] = useState(false)
-  const [mood, setMood] = useState<'idle' | 'happy' | 'excited' | 'encouraging'>('happy')
+  const availableNotes = MELODY_NOTES.slice(0, settings.numColors);
 
-  const playbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hairColor = activeProfile?.id === 1 ? '#EC4899' : '#06B6D4'
-  const outfitColor = activeProfile?.id === 1 ? '#7C3AED' : '#EC4899'
+  const [gameState, setGameState] = useState<GameState>('watching');
+  const [sequence, setSequence] = useState<MelodyNote[]>([]);
+  const [playerSequence, setPlayerSequence] = useState<MelodyNote[]>([]);
+  const [round, setRound] = useState(0);
+  const [score, setScore] = useState(0);
+  const [activeNote, setActiveNote] = useState<string | null>(null);
+  const [lastCorrect, setLastCorrect] = useState<boolean | null>(null);
+  const playingRef = useRef(false);
 
-  const currentRound = rounds[roundIdx]
-  const sequence = currentRound.sequence
+  const playSequence = useCallback((seq: MelodyNote[]) => {
+    if (playingRef.current) return;
+    playingRef.current = true;
+    setActiveNote(null);
+    setGameState('watching');
 
-  // ── Play the sequence for the child to watch ──────────────────────────────
-  const playSequence = useCallback(() => {
-    setPhase('watching')
-    setPlayerInput([])
-    setLitNoteId(null)
+    const ctx = getAC();
+    let t0 = ctx.currentTime + 0.4;
+    seq.forEach((note) => {
+      const noteStart = t0;
+      playNote(note.note, noteStart);
+      const highlightDelay = (noteStart - ctx.currentTime) * 1000;
+      setTimeout(() => setActiveNote(note.note), highlightDelay);
+      setTimeout(() => setActiveNote(null), highlightDelay + 350);
+      t0 += 0.6;
+    });
+    const doneDelay = (t0 - ctx.currentTime + 0.1) * 1000;
+    setTimeout(() => {
+      setActiveNote(null);
+      setGameState('playing');
+      playingRef.current = false;
+    }, doneDelay);
+  }, []);
 
-    const SEQ_DELAY = 600 // ms between notes
-    sequence.forEach((note, i) => {
-      playbackTimerRef.current = setTimeout(() => {
-        playNote(note.frequency)
-        setLitNoteId(note.id)
-        setTimeout(() => setLitNoteId(null), SEQ_DELAY - 100)
+  const startRound = useCallback((roundNum: number) => {
+    const len = Math.min(settings.minSeq + Math.floor(roundNum / 2), settings.maxSeq);
+    const seq = Array.from({ length: len }, () => shuffle(availableNotes)[0]);
+    setSequence(seq);
+    setPlayerSequence([]);
+    setLastCorrect(null);
+    setTimeout(() => playSequence(seq), 400);
+  }, [settings, availableNotes, playSequence]);
 
-        if (i === sequence.length - 1) {
-          // Sequence done — let child play
-          setTimeout(() => {
-            setPhase('playing')
-            const msg = isRTL ? 'עכשיו תורך! חזרי על הנגינה!' : 'Your turn! Repeat the melody!'
-            say(msg)
-          }, SEQ_DELAY + 100)
-        }
-      }, i * SEQ_DELAY + 300)
-    })
-  }, [sequence, isRTL, say])
-
-  // Auto-play on round start
   useEffect(() => {
-    const msg = isRTL
-      ? 'הקשיבי לנגינה ואחר כך חזרי!'
-      : 'Listen to the melody then repeat it!'
-    const timer = setTimeout(() => {
-      say(msg)
-      setTimeout(playSequence, 800)
-    }, 300)
-    return () => {
-      clearTimeout(timer)
-      if (playbackTimerRef.current) clearTimeout(playbackTimerRef.current)
+    startRound(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePlayerTap = (note: MelodyNote) => {
+    if (gameState !== 'playing') return;
+    playNote(note.note, getAC().currentTime);
+    const newSeq = [...playerSequence, note];
+    setPlayerSequence(newSeq);
+
+    if (newSeq.length === sequence.length) {
+      const correct = newSeq.every((n, i) => n.note === sequence[i].note);
+      setLastCorrect(correct);
+      if (correct) setScore(prev => prev + 1);
+      setGameState('answered');
     }
-  }, [roundIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+  };
 
-  const handleNotePress = (note: NoteColor) => {
-    if (phase !== 'playing') return
-    playNote(note.frequency)
-    setLitNoteId(note.id)
-    setTimeout(() => setLitNoteId(null), 200)
-
-    const newInput = [...playerInput, note]
-    setPlayerInput(newInput)
-
-    const currentPos = newInput.length - 1
-    const expected = sequence[currentPos]
-
-    if (note.id !== expected.id) {
-      // Wrong note
-      setMood('encouraging')
-      playWrong()
-      setShowEncouragement(true)
-      setTimeout(() => {
-        setShowEncouragement(false)
-        setMood('happy')
-        // Replay sequence
-        setPlayerInput([])
-        setTimeout(playSequence, 400)
-      }, 1600)
-      return
-    }
-
-    // Correct so far
-    if (newInput.length === sequence.length) {
-      // Full sequence correct!
-      setMood('excited')
-      playCorrect()
-      const earned = MELODY_SPARKS_PER_ROUND
-      const newTotal = sparksEarned + earned
-      setSparksEarned(newTotal)
-      setShowCelebration(true)
-
-      setTimeout(() => {
-        setShowCelebration(false)
-        playSpark()
-        advanceRound(newTotal)
-      }, 1400)
-    }
-  }
-
-  const advanceRound = (currentSparks: number) => {
-    const nextIdx = roundIdx + 1
-    if (nextIdx >= totalRounds) {
-      const finalSparks = currentSparks + MELODY_SPARKS_BONUS
-      completeGame('music', 'melody-sequence', 100)
-      setTimeout(() => {
-        playSpark()
-        onComplete(finalSparks)
-      }, 300)
+  const nextRound = () => {
+    const nextRoundNum = round + 1;
+    if (nextRoundNum >= settings.rounds) {
+      const sparksEarned = score * settings.sparksPerCorrect;
+      addSparks(sparksEarned);
+      completeGame('music', 'melody-sequence');
+      onComplete(sparksEarned);
+      setGameState('finished');
     } else {
-      setRoundIdx(nextIdx)
-      setPhase('watching')
-      setPlayerInput([])
-      setLitNoteId(null)
-      setMood('happy')
+      setRound(nextRoundNum);
+      startRound(nextRoundNum);
     }
+  };
+
+  if (gameState === 'finished') {
+    return (
+      <GameShell title={s.games.melodySequence} round={settings.rounds} totalRounds={settings.rounds} mood="excited" onBack={onBack}>
+        <div className="flex-1 flex flex-col items-center justify-center text-white text-center gap-4">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }} className="text-6xl">🎶</motion.div>
+          <h2 className="text-3xl font-bold" style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}>{s.goodJob}</h2>
+          <p className="text-xl text-kpop-gold">{s.sparksEarned.replace('{count}', String(score * settings.sparksPerCorrect))}</p>
+          <Button onClick={onBack} className="mt-4">{s.back}</Button>
+        </div>
+      </GameShell>
+    );
   }
 
-  // Progress dots: colour = matched so far
-  const progressDots = sequence.map((note, i) => {
-    if (i < playerInput.length) return playerInput[i].id === note.id ? 'correct' : 'wrong'
-    return 'empty'
-  })
+  const stateTitle = gameState === 'watching' ? s.games.melodySequenceWatch
+    : gameState === 'playing' ? s.games.melodySequenceRepeat
+      : lastCorrect ? s.wellDone : s.tryAgain;
 
   return (
-    <div
-      className="fixed inset-0 flex flex-col overflow-hidden"
-      style={{ background: 'linear-gradient(160deg, #0D1A2E 0%, #0D0B1A 100%)' }}
+    <GameShell
+      title={s.games.melodySequence}
+      round={round}
+      totalRounds={settings.rounds}
+      mood={gameState === 'answered' ? (lastCorrect ? 'excited' : 'encouraging') : 'happy'}
+      onBack={onBack}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-3 pb-2 safe-top">
-        <motion.button
-          className="flex items-center gap-1.5 text-white/60 font-bold
-                     bg-white/5 px-3 py-2 rounded-full border border-white/10"
-          whileTap={{ scale: 0.93 }}
-          onClick={onBack}
-          style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
-        >
-          <span>{isRTL ? '→' : '←'}</span> {s.back}
-        </motion.button>
+      <div className="flex-1 flex flex-col items-center justify-around p-4 text-white text-center">
+        <div>
+          <h2 className="text-2xl font-bold" style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}>{stateTitle}</h2>
+        </div>
 
-        <h1 className="font-bold text-white text-xl"
-          style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}>
-          🎶 {isRTL ? 'חזרי על הנגינה' : 'Melody Sequence'}
-        </h1>
-        <SparkCounter />
-      </div>
-
-      {/* Round progress */}
-      <div className="flex gap-1.5 justify-center px-6 py-2">
-        {rounds.map((_, i) => (
-          <div
-            key={i}
-            className="h-2 flex-1 rounded-full"
-            style={{
-              background: i < roundIdx
-                ? '#F59E0B'
-                : i === roundIdx
-                ? '#EC4899'
-                : 'rgba(255,255,255,0.12)',
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="flex-1 flex flex-col items-center justify-between py-3 px-4 gap-3">
-        <CelebrationOverlay
-          show={showCelebration}
-          message={isRTL ? 'מצוין! ניגנת נכון! 🎵' : 'Perfect melody! 🎵'}
-          sparksEarned={MELODY_SPARKS_PER_ROUND}
-        />
-        <EncouragementOverlay
-          show={showEncouragement}
-          message={isRTL ? 'כמעט! בואי נשמע שוב!' : 'Not quite! Let\'s listen again!'}
-        />
-
-        {/* Status label */}
-        <motion.div
-          className="text-center"
-          key={phase}
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <p
-            className="text-xl font-bold"
-            style={{
-              fontFamily: 'Fredoka One, Nunito, sans-serif',
-              color: phase === 'watching' ? '#06B6D4' : '#EC4899',
-            }}
-          >
-            {phase === 'watching'
-              ? (isRTL ? '👀 תצפי!' : '👀 Watch!')
-              : (isRTL ? '🎵 תורך!' : '🎵 Your turn!')}
-          </p>
-          <p className="text-white/40 text-sm mt-0.5" style={{ fontFamily: 'Nunito, Heebo, sans-serif' }}>
-            {isRTL
-              ? `סיבוב ${roundIdx + 1} מתוך ${totalRounds} · ${sequence.length} תווים`
-              : `Round ${roundIdx + 1} of ${totalRounds} · ${sequence.length} notes`}
-          </p>
-        </motion.div>
-
-        {/* Sequence progress dots */}
-        <div className="flex gap-3 justify-center">
-          {progressDots.map((state, i) => (
-            <motion.div
-              key={i}
-              className="rounded-full"
+        {/* Note buttons */}
+        <div className="flex gap-3 flex-wrap justify-center">
+          {availableNotes.map(note => (
+            <motion.button
+              key={note.note}
+              className="rounded-full border-4 flex items-center justify-center"
               style={{
-                width: 18, height: 18,
-                background: state === 'correct'
-                  ? '#10B981'
-                  : state === 'wrong'
-                  ? '#EF4444'
-                  : 'rgba(255,255,255,0.15)',
-                boxShadow: state === 'correct' ? '0 0 10px rgba(16,185,129,0.6)' : 'none',
+                width: age === 3 ? 80 : 72,
+                height: age === 3 ? 80 : 72,
+                backgroundColor: note.color,
+                borderColor: activeNote === note.note ? '#ffffff' : note.color,
+                boxShadow: activeNote === note.note ? `0 0 24px ${note.color}` : 'none',
               }}
-              animate={state === 'correct' ? { scale: [1, 1.4, 1] } : {}}
-              transition={{ duration: 0.25 }}
+              onPointerDown={() => handlePlayerTap(note)}
+              whileTap={{ scale: gameState === 'playing' ? 0.88 : 1 }}
+              animate={{ scale: activeNote === note.note ? 1.2 : 1 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 20 }}
             />
           ))}
         </div>
 
-        {/* Note buttons */}
-        <div className="flex flex-wrap gap-3 justify-center max-w-sm">
-          <AnimatePresence>
-            {notePool.map((note, i) => {
-              const isLit = litNoteId === note.id
-              return (
-                <motion.button
-                  key={note.id}
-                  initial={{ opacity: 0, scale: 0.7 }}
-                  animate={{
-                    opacity: 1,
-                    scale: isLit ? 1.18 : 1,
-                    boxShadow: isLit
-                      ? `0 0 40px ${note.colorHex}cc`
-                      : `0 0 12px ${note.colorHex}44`,
-                  }}
-                  exit={{ opacity: 0, scale: 0.7 }}
-                  transition={{
-                    opacity: { delay: i * 0.06 },
-                    scale: { duration: 0.12 },
-                    boxShadow: { duration: 0.12 },
-                  }}
-                  className="rounded-2xl font-bold text-white border-2"
-                  style={{
-                    width: age === 3 ? 88 : 76,
-                    height: age === 3 ? 88 : 76,
-                    background: isLit
-                      ? note.colorHex
-                      : `${note.colorHex}55`,
-                    borderColor: note.colorHex,
-                    fontSize: age === 3 ? 24 : 20,
-                    fontFamily: 'Fredoka One, Nunito, sans-serif',
-                  }}
-                  whileTap={phase === 'playing' ? { scale: 0.9 } : {}}
-                  onClick={() => handleNotePress(note)}
-                  disabled={phase !== 'playing'}
-                >
-                  {note.label}
-                </motion.button>
-              )
-            })}
-          </AnimatePresence>
+        {/* Player progress dots */}
+        <div className="flex gap-2 h-6 items-center">
+          {sequence.map((_, i) => (
+            <div key={i} className="w-3 h-3 rounded-full"
+              style={{ background: i < playerSequence.length ? playerSequence[i].color : 'rgba(255,255,255,0.2)' }}
+            />
+          ))}
         </div>
 
-        {/* Hear again button */}
-        {phase === 'playing' && (
-          <motion.button
-            className="rounded-full px-6 py-2 text-white/70 border border-white/20 text-sm font-bold"
-            style={{
-              fontFamily: 'Nunito, Heebo, sans-serif',
-              background: 'rgba(255,255,255,0.07)',
-            }}
-            whileTap={{ scale: 0.95 }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            onClick={() => {
-              setPlayerInput([])
-              playSequence()
-            }}
-          >
-            🔁 {isRTL ? 'שמעי שוב' : 'Hear again'}
-          </motion.button>
-        )}
-
-        {/* Character */}
-        <Character mood={mood} size={90} hairColor={hairColor} outfitColor={outfitColor} />
+        {/* Action buttons */}
+        <div className="flex gap-3">
+          <AnimatePresence mode="wait">
+            {gameState === 'answered' && (
+              <motion.div key="next" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <Button onClick={nextRound}>{round + 1 >= settings.rounds ? s.finishGame : s.nextRound}</Button>
+              </motion.div>
+            )}
+            {(gameState === 'watching' || gameState === 'playing') && (
+              <motion.div key="replay" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <Button variant="secondary" onClick={() => { if (playingRef.current) return; setPlayerSequence([]); playSequence(sequence); }} disabled={gameState === 'watching'}>
+                  🔁 {s.games.playAgain}
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-    </div>
-  )
+    </GameShell>
+  );
 }
