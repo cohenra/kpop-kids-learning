@@ -67,116 +67,244 @@ export function StageView() {
       {/* ── Scrollable content ─────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto scrollable px-4 py-4 space-y-5">
 
-        {/* ── Stage visualization ────────────────────────────────────── */}
+        {/* ── Stage visualization — Concert Stage ────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="relative rounded-3xl overflow-hidden border border-white/10"
           style={{
-            background: 'linear-gradient(180deg, #0D0B1A 0%, #1E1B2E 100%)',
-            minHeight: 200,
-            boxShadow: '0 0 30px rgba(124,58,237,0.2)',
+            background: '#0A0818',
+            minHeight: 220,
+            boxShadow: '0 0 40px rgba(124,58,237,0.3), 0 0 80px rgba(236,72,153,0.1)',
           }}
         >
-          {/* Stage lighting effects */}
-          {unlockedStageItems.includes('lighting') && (
-            <>
-              <motion.div
-                className="absolute top-0 left-1/4 w-2 h-full opacity-20"
-                style={{ background: 'linear-gradient(180deg, #7C3AED, transparent)' }}
-                animate={{ opacity: [0.15, 0.3, 0.15] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-              <motion.div
-                className="absolute top-0 right-1/4 w-2 h-full opacity-20"
-                style={{ background: 'linear-gradient(180deg, #EC4899, transparent)' }}
-                animate={{ opacity: [0.15, 0.3, 0.15] }}
-                transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-              />
-            </>
-          )}
+          {/* ── LED Wall (back wall panels) ──────────────────────────── */}
+          <div className="absolute inset-x-0 top-0 h-28 overflow-hidden">
+            <svg width="100%" height="100%" viewBox="0 0 320 112" preserveAspectRatio="xMidYMid slice">
+              {/* LED panel grid */}
+              {!unlockedStageItems.includes('ledWall')
+                ? /* Unlit — dark panels */
+                  [0,1,2,3,4,5].map(col => [0,1,2,3].map(row => (
+                    <rect
+                      key={`${col}-${row}`}
+                      x={col * 53 + 3} y={row * 27 + 2}
+                      width="49" height="23" rx="3"
+                      fill="#120E24" stroke="#1E1B3A" strokeWidth="1"
+                    />
+                  )))
+                : /* Lit — animated colored panels */
+                  [0,1,2,3,4,5].map(col => [0,1,2,3].map(row => {
+                    const colors = ['#7C3AED','#EC4899','#06B6D4','#F59E0B']
+                    const color = colors[(col + row) % 4]
+                    return (
+                      <motion.rect
+                        key={`${col}-${row}`}
+                        x={col * 53 + 3} y={row * 27 + 2}
+                        width="49" height="23" rx="3"
+                        fill={color}
+                        opacity={0.35}
+                        animate={{ opacity: [0.2, 0.5, 0.2] }}
+                        transition={{ duration: 1.5 + (col + row) * 0.15, repeat: Infinity, delay: (col + row) * 0.1 }}
+                      />
+                    )
+                  }))
+              }
+              {/* LED wall frame */}
+              <rect x="1" y="1" width="318" height="110" rx="4" fill="none" stroke="#2D2A4A" strokeWidth="2" />
+            </svg>
+          </div>
 
-          {/* LED wall background */}
-          {unlockedStageItems.includes('ledWall') && (
-            <motion.div
-              className="absolute inset-x-0 top-0 h-16"
-              style={{
-                background: 'linear-gradient(90deg, #7C3AED22, #EC489922, #06B6D422, #7C3AED22)',
-              }}
-              animate={{ backgroundPosition: ['0% 0%', '100% 0%'] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-            />
-          )}
+          {/* ── Lighting rig with spotlight cones ────────────────────── */}
+          <div className="absolute inset-x-0 top-0 h-32 pointer-events-none overflow-hidden">
+            <svg width="100%" height="100%" viewBox="0 0 320 128" preserveAspectRatio="xMidYMid slice">
+              {/* Horizontal rig bar */}
+              <rect x="8" y="6" width="304" height="7" rx="3.5" fill="#3a3a4a" />
+              {/* Rig bolts */}
+              {[40, 100, 160, 220, 280].map((x, i) => (
+                <circle key={i} cx={x} cy="9.5" r="4" fill="#555566" />
+              ))}
+              {/* Spotlight cones */}
+              {unlockedStageItems.includes('lighting') && (
+                <>
+                  {[
+                    { x: 60, color: '#7C3AED', delay: 0 },
+                    { x: 130, color: '#EC4899', delay: 0.4 },
+                    { x: 190, color: '#06B6D4', delay: 0.8 },
+                    { x: 260, color: '#F59E0B', delay: 1.2 },
+                  ].map(({ x, color, delay }, i) => (
+                    <motion.path
+                      key={i}
+                      d={`M ${x} 13 L ${x - 30} 128 L ${x + 30} 128 Z`}
+                      fill={color}
+                      opacity={0.13}
+                      animate={{ opacity: [0.08, 0.22, 0.08] }}
+                      transition={{ duration: 2, repeat: Infinity, delay }}
+                    />
+                  ))}
+                  {/* Spotlight fixture rectangles */}
+                  {[60, 130, 190, 260].map((x, i) => (
+                    <rect key={i} x={x - 7} y="5" width="14" height="14" rx="3" fill="#222233" />
+                  ))}
+                </>
+              )}
+            </svg>
+          </div>
 
-          {/* Curtains */}
+          {/* ── Curtains (velvet, slide in from sides) ───────────────── */}
           {unlockedStageItems.includes('curtains') && (
             <>
-              <div
-                className="absolute top-0 left-0 w-8 h-full opacity-60"
-                style={{ background: 'linear-gradient(90deg, #7C3AED, transparent)' }}
-              />
-              <div
-                className="absolute top-0 right-0 w-8 h-full opacity-60"
-                style={{ background: 'linear-gradient(270deg, #7C3AED, transparent)' }}
-              />
+              <motion.div
+                className="absolute top-0 left-0 w-12 h-full z-10"
+                initial={{ x: -48 }}
+                animate={{ x: 0 }}
+                transition={{ type: 'spring', stiffness: 90, damping: 18, delay: 0.2 }}
+                style={{
+                  background: 'linear-gradient(90deg, #8B0025 0%, #CC003A 60%, #8B002544 100%)',
+                }}
+              >
+                {/* Curtain fold lines */}
+                {[10, 22, 34].map(x => (
+                  <div key={x} className="absolute top-0 h-full w-px opacity-30"
+                    style={{ left: x, background: 'linear-gradient(180deg, #FF6080, transparent)' }} />
+                ))}
+              </motion.div>
+              <motion.div
+                className="absolute top-0 right-0 w-12 h-full z-10"
+                initial={{ x: 48 }}
+                animate={{ x: 0 }}
+                transition={{ type: 'spring', stiffness: 90, damping: 18, delay: 0.2 }}
+                style={{
+                  background: 'linear-gradient(270deg, #8B0025 0%, #CC003A 60%, #8B002544 100%)',
+                }}
+              >
+                {[10, 22, 34].map(x => (
+                  <div key={x} className="absolute top-0 h-full w-px opacity-30"
+                    style={{ right: x, background: 'linear-gradient(180deg, #FF6080, transparent)' }} />
+                ))}
+              </motion.div>
             </>
           )}
 
-          {/* Special effects (confetti) */}
+          {/* ── Special effects — confetti + laser sweeps ───────────── */}
           {unlockedStageItems.includes('effects') && (
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-              {[...Array(8)].map((_, i) => (
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+              {/* Laser beams sweeping */}
+              {['#EC4899','#06B6D4','#7C3AED'].map((color, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute top-0 h-full w-0.5 opacity-30"
+                  style={{ background: `linear-gradient(180deg, ${color}, transparent 80%)`, left: '50%' }}
+                  animate={{ rotate: [-25 + i * 25, 25 - i * 25, -25 + i * 25] }}
+                  transition={{ duration: 3 + i * 0.8, repeat: Infinity, delay: i * 0.6, ease: 'easeInOut' }}
+                />
+              ))}
+              {/* Falling confetti */}
+              {[...Array(10)].map((_, i) => (
                 <motion.span
                   key={i}
                   className="absolute text-sm"
-                  style={{ left: `${10 + i * 12}%`, top: `-10%` }}
-                  animate={{ y: ['0%', '110%'], rotate: [0, 360] }}
-                  transition={{ duration: 3 + i * 0.4, repeat: Infinity, delay: i * 0.3, ease: 'linear' }}
+                  style={{ left: `${8 + i * 9}%`, top: '-12%' }}
+                  animate={{ y: ['0%', '115%'], rotate: [0, 360 * (i % 2 === 0 ? 1 : -1)] }}
+                  transition={{
+                    duration: 2.5 + i * 0.35,
+                    repeat: Infinity,
+                    delay: i * 0.25,
+                    ease: 'linear',
+                  }}
                 >
-                  {['✨', '🌟', '💫', '⭐', '✦', '★', '✨', '💫'][i]}
+                  {['✨','🌟','💫','⭐','✦','★','🎊','💥','🌈','🎶'][i]}
                 </motion.span>
               ))}
             </div>
           )}
 
-          {/* Character on stage */}
-          <div className="relative flex justify-center items-end pb-0" style={{ minHeight: 160 }}>
+          {/* ── Character on stage (center) ──────────────────────────── */}
+          <div
+            className="relative flex justify-center items-end z-10"
+            style={{ minHeight: 165, paddingTop: 28 }}
+          >
             <Character
               mood={stageFullyBuilt ? 'excited' : 'happy'}
-              size={120}
+              size={125}
               hairColor={hairColor}
               outfitColor={outfitColor}
             />
           </div>
 
-          {/* Stage floor */}
-          {unlockedStageItems.includes('floor') ? (
-            <motion.div
-              className="h-4 w-full"
-              style={{
-                background: 'linear-gradient(90deg, #7C3AED, #EC4899, #06B6D4, #7C3AED)',
-                backgroundSize: '200% 100%',
-              }}
-              animate={{ backgroundPosition: ['0% 0%', '100% 0%'] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-            />
-          ) : (
-            <div className="h-4 w-full bg-white/5 rounded-b-3xl" />
-          )}
+          {/* ── Stage platform + floor ────────────────────────────────── */}
+          <div className="relative">
+            {/* Platform edge / depth */}
+            <div className="h-3 w-full" style={{ background: 'linear-gradient(180deg, #3D2A0A, #2A1D07)' }} />
 
-          {/* Audience */}
+            {/* Stage floor */}
+            {unlockedStageItems.includes('floor') ? (
+              <div className="relative overflow-hidden" style={{ height: 16 }}>
+                <svg width="100%" height="100%" viewBox="0 0 320 16" preserveAspectRatio="none">
+                  {/* Wooden planks base */}
+                  <rect width="320" height="16" fill="#7A5020" />
+                  {/* Plank divisions */}
+                  {[0,40,80,120,160,200,240,280].map(x => (
+                    <line key={x} x1={x} y1="0" x2={x} y2="16" stroke="#5A3810" strokeWidth="2" />
+                  ))}
+                  {/* Warm lighting glow on floor */}
+                  <rect width="320" height="16" fill="url(#floorGlow)" />
+                  <defs>
+                    <radialGradient id="floorGlow" cx="50%" cy="0%" r="60%">
+                      <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
+                    </radialGradient>
+                  </defs>
+                </svg>
+                {/* Animated floor strip overlay */}
+                <motion.div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.25), transparent)',
+                  }}
+                  animate={{ x: ['-100%', '100%'] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                />
+              </div>
+            ) : (
+              <div className="h-4 w-full" style={{ background: '#1a1040' }} />
+            )}
+          </div>
+
+          {/* ── Audience silhouettes ──────────────────────────────────── */}
           {unlockedStageItems.includes('audience') && (
-            <div className="flex justify-center gap-1 py-2 bg-kpop-bg/50">
-              {['👧', '👦', '🧒', '👶', '🧒', '👦', '👧'].map((emoji, i) => (
-                <motion.span
-                  key={i}
-                  className="text-xl"
-                  animate={{ y: [0, -3, 0] }}
-                  transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.1 }}
-                >
-                  {emoji}
-                </motion.span>
-              ))}
+            <div className="relative overflow-hidden" style={{ background: '#0A0818' }}>
+              <svg width="100%" height="52" viewBox="0 0 320 52" preserveAspectRatio="xMidYMid slice">
+                {/* Purple crowd glow */}
+                <ellipse cx="160" cy="52" rx="160" ry="35" fill="#7C3AED" opacity="0.18" />
+                {/* Audience head silhouettes */}
+                {[22, 52, 82, 112, 142, 172, 202, 232, 262, 292].map((x, i) => {
+                  const yOff = i % 2 === 0 ? 2 : -2
+                  return (
+                    <motion.g
+                      key={i}
+                      animate={{ y: [0, -3, 0] }}
+                      transition={{ duration: 0.7 + i * 0.08, repeat: Infinity, delay: i * 0.09 }}
+                    >
+                      {/* Body */}
+                      <ellipse cx={x} cy={45 + yOff} rx="12" ry="10" fill="#16103A" />
+                      {/* Head */}
+                      <ellipse cx={x} cy={30 + yOff} rx="9" ry="10" fill="#16103A" />
+                      {/* Glow sticks */}
+                      {i % 3 === 0 && (
+                        <motion.line
+                          x1={x} y1={22 + yOff}
+                          x2={x} y2={15 + yOff}
+                          stroke={['#EC4899','#06B6D4','#F59E0B'][i % 3]}
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.07 }}
+                        />
+                      )}
+                    </motion.g>
+                  )
+                })}
+              </svg>
             </div>
           )}
         </motion.div>

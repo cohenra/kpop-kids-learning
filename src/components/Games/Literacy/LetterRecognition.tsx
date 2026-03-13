@@ -72,13 +72,20 @@ export function LetterRecognition({ onComplete, onBack }: Props) {
     setSelectedLetter(null)
     setMood('idle')
     buildChoices(current)
-    // Brief delay then speak
-    const t1 = setTimeout(() => say(current.sound), 400)
+    // For age 3: say "Which letter is this?" first, then say the letter
+    const t1 = setTimeout(() => {
+      if (age === 3 && isRTL) {
+        say('איזו אות זו?')
+        setTimeout(() => say(current.sound), 1200)
+      } else {
+        say(current.sound)
+      }
+    }, 400)
     return () => {
       clearTimeout(t1)
       if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current)
     }
-  }, [roundIdx, current, buildChoices, say])
+  }, [roundIdx, current, buildChoices, say, age, isRTL])
 
   const handleChoice = (item: LetterItem) => {
     if (answerState !== 'idle') return
@@ -167,17 +174,18 @@ export function LetterRecognition({ onComplete, onBack }: Props) {
             exit={{ opacity: 0, scale: 0.6, y: -20 }}
             transition={{ type: 'spring', stiffness: 260, damping: 18 }}
           >
-            {/* Letter card */}
+            {/* Letter card — bigger for age 3 */}
             <motion.div
               className="flex items-center justify-center rounded-3xl border-2 border-kpop-purple/50"
               style={{
-                width: 140, height: 140,
+                width: age === 3 ? 160 : 140,
+                height: age === 3 ? 160 : 140,
                 background: 'linear-gradient(135deg, rgba(124,58,237,0.3), rgba(236,72,153,0.2))',
                 boxShadow: '0 0 40px rgba(124,58,237,0.4)',
               }}
               animate={{ boxShadow: [
                 '0 0 30px rgba(124,58,237,0.3)',
-                '0 0 50px rgba(236,72,153,0.5)',
+                '0 0 55px rgba(236,72,153,0.55)',
                 '0 0 30px rgba(124,58,237,0.3)',
               ]}}
               transition={{ duration: 2, repeat: Infinity }}
@@ -186,7 +194,7 @@ export function LetterRecognition({ onComplete, onBack }: Props) {
                 className="select-none"
                 style={{
                   fontFamily: 'Fredoka One, Nunito, Heebo, sans-serif',
-                  fontSize: 80,
+                  fontSize: age === 3 ? 100 : 80,
                   lineHeight: 1,
                   background: 'linear-gradient(135deg, #EC4899, #7C3AED)',
                   WebkitBackgroundClip: 'text',
@@ -220,17 +228,14 @@ export function LetterRecognition({ onComplete, onBack }: Props) {
           animate={{ opacity: [0.6, 1, 0.6] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          {isRTL
-            ? 'איזו תמונה מתחילה באות הזאת?'
-            : 'Which picture starts with this letter?'}
+          {age === 3
+            ? (isRTL ? 'על איזו אות הקשבת?' : 'Which letter did you hear?')
+            : (isRTL ? 'איזו תמונה מתחילה באות הזאת?' : 'Which picture starts with this letter?')
+          }
         </motion.p>
 
         {/* ── Answer choices ────────────────────────────────────────── */}
-        <div
-          className={`grid gap-3 w-full ${
-            choiceCount === 2 ? 'grid-cols-2' : 'grid-cols-2'
-          }`}
-        >
+        <div className="grid grid-cols-2 gap-3 w-full">
           {choices.map((item, i) => {
             const st =
               answerState === 'idle' ? 'default'
@@ -238,7 +243,20 @@ export function LetterRecognition({ onComplete, onBack }: Props) {
               : item.letter === selectedLetter ? 'wrong'
               : 'disabled'
 
-            return (
+            // Age 3: show letter prominently + emoji + word as sublabel
+            // Age 5: show word + emoji (existing behavior)
+            return age === 3 ? (
+              <AnswerButton
+                key={item.letter}
+                label={item.letter}
+                sublabel={item.word}
+                emoji={item.emoji}
+                onClick={() => handleChoice(item)}
+                state={st}
+                age={age}
+                index={i}
+              />
+            ) : (
               <AnswerButton
                 key={item.letter}
                 label={item.word}
