@@ -25,6 +25,12 @@ const NIKUD_MAP: Record<string, string> = {
   'ר': 'רֵישׁ',
   'ש': 'שִׁין',
   'ת': 'תָּו',
+  // Final forms (sofit)
+  'ך': 'כַּף סוֹפִית',
+  'ם': 'מֵם סוֹפִית',
+  'ן': 'נוּן סוֹפִית',
+  'ף': 'פֵּא סוֹפִית',
+  'ץ': 'צָדִי סוֹפִית',
   // Hebrew numbers (nikud form for clear pronunciation)
   '1': 'אֶחָד',
   '2': 'שְׁנַיִם',

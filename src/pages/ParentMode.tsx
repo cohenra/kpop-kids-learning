@@ -14,7 +14,7 @@ const PIN_LENGTH = 4
 
 export function ParentMode() {
   const navigate = useNavigate()
-  const { language, isRTL } = useApp()
+  const { language, isRTL, backArrow } = useApp()
   const s = t(language)
   const {
     isUnlocked,
@@ -97,7 +97,7 @@ export function ParentMode() {
           onClick={() => navigate('/home')}
           style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
         >
-          {isRTL ? '→' : '←'} {s.back}
+          {backArrow} {s.back}
         </motion.button>
 
         <motion.div
@@ -203,7 +203,7 @@ export function ParentMode() {
           onClick={() => { lock(); navigate('/home') }}
           style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
         >
-          {isRTL ? '→' : '←'} {s.back}
+          {backArrow} {s.back}
         </motion.button>
         <h1
           className="text-2xl font-bold text-white"

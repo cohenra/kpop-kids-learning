@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useApp } from '../context/AppContext'
@@ -17,17 +18,16 @@ import {
 
 export function StageView() {
   const navigate = useNavigate()
-  const { activeProfile, language, isRTL, sparks, unlockedStageItems, unlockedBandMembers } = useApp()
+  const { activeProfile, language, isRTL, sparks, unlockedStageItems, unlockedBandMembers, profileColors, backArrow } = useApp()
   const { getTotalCompleted } = useProgress()
   const s = t(language)
 
-  if (!activeProfile) {
-    navigate('/')
-    return null
-  }
+  // Guard: redirect during next tick, not during render
+  useEffect(() => {
+    if (!activeProfile) navigate('/')
+  }, [activeProfile, navigate])
 
-  const hairColor = activeProfile.id === 1 ? '#EC4899' : '#06B6D4'
-  const outfitColor = activeProfile.id === 1 ? '#7C3AED' : '#EC4899'
+  if (!activeProfile) return null
 
   const nextItem = getNextStageItem(unlockedStageItems)
   const sparksNeeded = getSparksForNextItem(sparks, unlockedStageItems)
@@ -50,7 +50,7 @@ export function StageView() {
           onClick={() => navigate('/home')}
           style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
         >
-          <span>{isRTL ? '→' : '←'}</span>
+          <span>{backArrow}</span>
           {s.back}
         </motion.button>
 
@@ -226,8 +226,8 @@ export function StageView() {
             <Character
               mood={stageFullyBuilt ? 'excited' : 'happy'}
               size={125}
-              hairColor={hairColor}
-              outfitColor={outfitColor}
+              hairColor={profileColors.hair}
+              outfitColor={profileColors.outfit}
             />
           </div>
 

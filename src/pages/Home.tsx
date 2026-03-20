@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useApp } from '../context/AppContext'
@@ -15,7 +15,7 @@ const LOGO_HOLD_MS = 3000
 
 export function Home() {
   const navigate = useNavigate()
-  const { activeProfile, language, setLanguage } = useApp()
+  const { activeProfile, language, setLanguage, profileColors } = useApp()
   const s = t(language)
 
   const logoHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -23,11 +23,10 @@ export function Home() {
   const [logoProgress, setLogoProgress] = useState(0)
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // If no profile, redirect to welcome
-  if (!activeProfile) {
-    navigate('/')
-    return null
-  }
+  // If no profile, redirect to welcome (in effect — not during render)
+  useEffect(() => {
+    if (!activeProfile) navigate('/')
+  }, [activeProfile, navigate])
 
   const handleRoomTap = (room: { id: RoomId; available: boolean }) => {
     if (!room.available) return
@@ -60,8 +59,7 @@ export function Home() {
     setLogoProgress(0)
   }
 
-  const hairColor = activeProfile.id === 1 ? '#EC4899' : '#06B6D4'
-  const outfitColor = activeProfile.id === 1 ? '#7C3AED' : '#EC4899'
+  if (!activeProfile) return null
 
   return (
     <div
@@ -148,8 +146,8 @@ export function Home() {
           <Character
             mood="idle"
             size={130}
-            hairColor={hairColor}
-            outfitColor={outfitColor}
+            hairColor={profileColors.hair}
+            outfitColor={profileColors.outfit}
           />
         </motion.div>
       </div>

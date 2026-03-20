@@ -18,11 +18,23 @@ import {
   hasAnyProfile,
   getGameProgress,
 } from '../utils/storage'
-import { getUnlockedStageItems, BAND_MEMBERS, BANDMATE_THRESHOLDS } from '../data/rewards'
+import { checkAllUnlocks } from '../data/rewards'
 import type { Language } from '../i18n/strings'
 import type { BandMember } from '../data/rewards'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+/** Derived profile avatar colors — computed once here, consumed everywhere. */
+export interface ProfileColors {
+  hair: string
+  outfit: string
+}
+
+function getProfileColors(id: 1 | 2): ProfileColors {
+  return id === 1
+    ? { hair: '#EC4899', outfit: '#7C3AED' }
+    : { hair: '#06B6D4', outfit: '#EC4899' }
+}
 
 interface AppContextValue {
   // Active profile
@@ -55,35 +67,15 @@ interface AppContextValue {
 
   // Age
   age: AgeProfile
+
+  // Derived — avoids repeating in every component
+  profileColors: ProfileColors
+  backArrow: string
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
 
-// ─── Helper: compute which bandmates should be unlocked ──────────────────────
-
-function computeUnlockedBandmates(
-  profileId: 1 | 2,
-  totalSparks: number,
-  currentUnlocked: string[],
-  stageUnlocked: string[],
-): string[] {
-  const completedCount = getGameProgress(profileId).filter((p) => p.completed).length
-  const stageComplete = stageUnlocked.length >= 6
-
-  const newUnlocked = [...currentUnlocked]
-  for (const threshold of BANDMATE_THRESHOLDS) {
-    if (newUnlocked.includes(threshold.memberId)) continue
-    if (threshold.gamesRequired === Infinity) {
-      // Kiki — requires full stage
-      if (stageComplete) newUnlocked.push(threshold.memberId)
-    } else if (completedCount >= threshold.gamesRequired) {
-      newUnlocked.push(threshold.memberId)
-    }
-  }
-  // Suppress lint warning: totalSparks is kept as a parameter for future use
-  void totalSparks
-  return newUnlocked
-}
+// computeUnlockedBandmates removed — logic lives in rewards.ts checkAllUnlocks()
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
@@ -160,33 +152,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSparks(newTotal)
       updateProfileSparks(activeProfileId, newTotal)
 
-      // Check for newly unlocked stage items
-      const newStageUnlocked = getUnlockedStageItems(newTotal, unlockedStageItems)
-      let stageChanged = false
-      if (newStageUnlocked.length !== unlockedStageItems.length) {
-        setUnlockedStageItems(newStageUnlocked)
-        updateProfileStageItems(activeProfileId, newStageUnlocked)
-        stageChanged = true
-      }
+      // Delegate all unlock logic to the pure function in rewards.ts.
+      // To add new reward types, extend checkAllUnlocks — not this function.
+      const gamesCompleted = getGameProgress(activeProfileId).filter((p) => p.completed).length
+      const result = checkAllUnlocks(newTotal, gamesCompleted, {
+        stageItems: unlockedStageItems,
+        bandMembers: unlockedBandMembers,
+      })
 
-      // Check for newly unlocked bandmates (needs latest game progress from storage)
-      const effectiveStage = stageChanged ? newStageUnlocked : unlockedStageItems
-      const newBandUnlocked = computeUnlockedBandmates(
-        activeProfileId,
-        newTotal,
-        unlockedBandMembers,
-        effectiveStage,
-      )
-
-      if (newBandUnlocked.length > unlockedBandMembers.length) {
-        // Find which members are newly unlocked (in order)
-        const justUnlockedId = newBandUnlocked.find((id) => !unlockedBandMembers.includes(id))
-        setUnlockedBandMembers(newBandUnlocked)
-        updateProfileBandMembers(activeProfileId, newBandUnlocked)
-
-        if (justUnlockedId) {
-          const member = BAND_MEMBERS.find((m) => m.id === justUnlockedId)
-          if (member) setNewlyUnlockedBandmate(member)
+      if (result.changed) {
+        if (result.stageItems.length !== unlockedStageItems.length) {
+          setUnlockedStageItems(result.stageItems)
+          updateProfileStageItems(activeProfileId, result.stageItems)
+        }
+        if (result.bandMembers.length !== unlockedBandMembers.length) {
+          setUnlockedBandMembers(result.bandMembers)
+          updateProfileBandMembers(activeProfileId, result.bandMembers)
+          if (result.newlyUnlockedBandmate) {
+            setNewlyUnlockedBandmate(result.newlyUnlockedBandmate)
+          }
         }
       }
     },
@@ -198,6 +182,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const age: AgeProfile = activeProfile?.age ?? 5
+  const profileColors = getProfileColors(activeProfileId)
+  const backArrow = isRTL ? '→' : '←'
 
   return (
     <AppContext.Provider
@@ -217,6 +203,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         reloadProfile,
         isFirstLaunch,
         age,
+        profileColors,
+        backArrow,
       }}
     >
       {children}

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useApp } from '../context/AppContext'
@@ -16,43 +17,50 @@ import { LogicRoom } from '../components/Games/Logic/LogicRoom'
 // ─── Game Room dispatcher ─────────────────────────────────────────────────────
 //
 // Routes to the correct room implementation based on roomId.
-// Rooms without a Phase 2 implementation show the "coming soon" placeholder.
+// To add a new room: import its component and add one entry to ROOM_REGISTRY.
+// Rooms not in the registry fall through to the "coming soon" placeholder.
+//
+//   roomId (URL param)
+//     ↓
+//   ROOM_REGISTRY lookup
+//     ├─ found  → render <RoomComponent />
+//     └─ not found → "coming soon" placeholder
+
+type RoomRegistry = Partial<Record<RoomId, React.FC>>
+
+const ROOM_REGISTRY: RoomRegistry = {
+  literacy: LiteracyRoom,
+  math:     MathRoom,
+  music:    MusicRoom,
+  logic:    LogicRoom,
+}
 
 export function GameRoom() {
   const navigate = useNavigate()
   const { roomId } = useParams<{ roomId: RoomId }>()
-  const { activeProfile, language, isRTL } = useApp()
+  const { activeProfile, language, isRTL, profileColors, backArrow } = useApp()
   const s = t(language)
 
-  if (!activeProfile || !roomId) {
-    navigate('/home')
-    return null
-  }
+  // Guard: redirect during next tick, not during render
+  useEffect(() => {
+    if (!activeProfile || !roomId || !ROOMS.find((r) => r.id === roomId)) {
+      navigate('/home')
+    }
+  }, [activeProfile, roomId, navigate])
+
+  if (!activeProfile || !roomId) return null
 
   const room = ROOMS.find((r) => r.id === roomId)
-  if (!room) {
-    navigate('/home')
-    return null
-  }
+  if (!room) return null
 
-  // ── Dispatch to real room implementations ─────────────────────────────────
-  if (roomId === 'literacy') {
-    return <LiteracyRoom />
-  }
-  if (roomId === 'math') {
-    return <MathRoom />
-  }
-  if (roomId === 'music') {
-    return <MusicRoom />
-  }
-  if (roomId === 'logic') {
-    return <LogicRoom />
+  // ── Dispatch via registry ──────────────────────────────────────────────────
+  const RoomComponent = ROOM_REGISTRY[roomId as RoomId]
+  if (RoomComponent) {
+    return <RoomComponent />
   }
 
   // ── Placeholder for rooms not yet built ───────────────────────────────────
   const roomStrings = s.rooms[roomId as RoomId]
-  const hairColor = activeProfile.id === 1 ? '#EC4899' : '#06B6D4'
-  const outfitColor = activeProfile.id === 1 ? '#7C3AED' : '#EC4899'
 
   return (
     <div
@@ -67,7 +75,7 @@ export function GameRoom() {
         onClick={() => navigate('/home')}
         style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
       >
-        <span>{isRTL ? '→' : '←'}</span>
+        <span>{backArrow}</span>
         {s.back}
       </motion.button>
 
@@ -101,8 +109,8 @@ export function GameRoom() {
         <Character
           mood="thinking"
           size={130}
-          hairColor={hairColor}
-          outfitColor={outfitColor}
+          hairColor={profileColors.hair}
+          outfitColor={profileColors.outfit}
         />
 
         <div className="bg-kpop-card/80 rounded-3xl p-5 border border-white/10 w-full">

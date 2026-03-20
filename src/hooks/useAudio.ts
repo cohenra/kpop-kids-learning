@@ -12,6 +12,15 @@ interface UseAudioReturn {
   playSpark: () => void
 }
 
+// Singleton AudioContext — browsers limit simultaneous contexts (~6 on iOS)
+let _audioCtx: AudioContext | null = null
+function getAudioCtx(): AudioContext {
+  if (!_audioCtx || _audioCtx.state === 'closed') {
+    _audioCtx = new AudioContext()
+  }
+  return _audioCtx
+}
+
 // Minimal Web Audio API beep helpers (no external files needed)
 function beep(
   frequency: number,
@@ -20,7 +29,7 @@ function beep(
   volume = 0.3
 ): void {
   try {
-    const ctx = new AudioContext()
+    const ctx = getAudioCtx()
     const oscillator = ctx.createOscillator()
     const gainNode = ctx.createGain()
 

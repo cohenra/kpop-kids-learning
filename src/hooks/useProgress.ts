@@ -5,20 +5,24 @@ import {
   saveGameProgress,
   type GameProgress,
 } from '../utils/storage'
-import { SPARKS_PER_GAME } from '../data/games'
 
 // ─── useProgress: per-profile game progress ───────────────────────────────────
+//
+// IMPORTANT: completeGame records progress only — it does NOT award sparks.
+// Sparks are awarded per-round by individual game components via addSparks()
+// (called via onComplete callback from the room hub).
+// Having two spark-award paths would cause double-counting.
 
 interface UseProgressReturn {
   getProgress: (roomId: string, gameId: string) => GameProgress | undefined
-  completeGame: (roomId: string, gameId: string, score?: number) => number
+  completeGame: (roomId: string, gameId: string, score?: number) => void
   isGameCompleted: (roomId: string, gameId: string) => boolean
   getRoomProgress: (roomId: string) => GameProgress[]
   getTotalCompleted: () => number
 }
 
 export function useProgress(): UseProgressReturn {
-  const { activeProfileId, age, addSparks } = useApp()
+  const { activeProfileId } = useApp()
 
   const getProgress = useCallback(
     (roomId: string, gameId: string): GameProgress | undefined => {
@@ -29,7 +33,7 @@ export function useProgress(): UseProgressReturn {
   )
 
   const completeGame = useCallback(
-    (roomId: string, gameId: string, score = 100): number => {
+    (roomId: string, gameId: string, score = 100): void => {
       const existing = getGameProgress(activeProfileId).find(
         (p) => p.roomId === roomId && p.gameId === gameId
       )
@@ -43,13 +47,9 @@ export function useProgress(): UseProgressReturn {
         lastPlayed: Date.now(),
       }
       saveGameProgress(activeProfileId, updated)
-
-      // Award sparks
-      const earned = SPARKS_PER_GAME[age]
-      addSparks(earned)
-      return earned
+      // Sparks are NOT awarded here — games handle their own rewards via onComplete.
     },
-    [activeProfileId, age, addSparks]
+    [activeProfileId]
   )
 
   const isGameCompleted = useCallback(

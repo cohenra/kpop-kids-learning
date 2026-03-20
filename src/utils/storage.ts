@@ -33,17 +33,23 @@ export interface AppStorage {
 
 const STORAGE_KEY = 'star-academy'
 
+// Write-through cache: one JSON parse on first load, zero after that.
+// Every write goes through saveRoot which updates the cache atomically.
+let _cache: AppStorage | null = null
+
 function loadRoot(): AppStorage {
+  if (_cache) return _cache
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return createDefaultStorage()
-    return JSON.parse(raw) as AppStorage
+    _cache = raw ? (JSON.parse(raw) as AppStorage) : createDefaultStorage()
   } catch {
-    return createDefaultStorage()
+    _cache = createDefaultStorage()
   }
+  return _cache
 }
 
 function saveRoot(data: AppStorage): void {
+  _cache = data
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
 

@@ -32,11 +32,8 @@ export function GameShell({
   children,
   hideCharacter = false,
 }: GameShellProps) {
-  const { language, isRTL, activeProfile } = useApp()
+  const { language, isRTL, activeProfile, profileColors, backArrow } = useApp()
   const s = t(language)
-
-  const hairColor = activeProfile?.id === 1 ? '#EC4899' : '#06B6D4'
-  const outfitColor = activeProfile?.id === 1 ? '#7C3AED' : '#EC4899'
 
   const progressPct = totalRounds > 0 ? (round / totalRounds) * 100 : 0
 
@@ -54,7 +51,7 @@ export function GameShell({
           onClick={onBack}
           style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
         >
-          <span>{isRTL ? '→' : '←'}</span>
+          <span>{backArrow}</span>
           {s.back}
         </motion.button>
 
@@ -103,8 +100,8 @@ export function GameShell({
           <Character
             mood={mood}
             size={90}
-            hairColor={hairColor}
-            outfitColor={outfitColor}
+            hairColor={profileColors.hair}
+            outfitColor={profileColors.outfit}
           />
         </div>
       )}

@@ -1,10 +1,11 @@
-// ─── Game: Finger Writing ─────────────────────────────────────────────────────
+// ─── Game: Number Tracing ─────────────────────────────────────────────────────
 //
-// Child traces letters with their finger.
-// Uses the shared <LetterTracer> component which provides:
-//   • writing guidelines, animated demo, start dot, direction arrow
-//   • distance-to-path scoring (accurate proximity check)
-//   • multi-stroke support (one stroke at a time, in correct order)
+// Child traces digits 0–9 with their finger.
+// Uses the same <LetterTracer> as Finger Writing, so the experience is
+// consistent: writing guidelines, animated demo, start dot, direction arrow.
+//
+// Age 3: digits 0–3 only (4 items, single strokes)
+// Age 5: all digits 0–9
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -16,8 +17,7 @@ import { CelebrationOverlay } from '../CelebrationOverlay'
 import { LetterTracer } from '../LetterTracer'
 import { getTracingItems } from '../../../data/tracingData'
 import type { TracingItem } from '../../../data/tracingData'
-import { shuffle } from '../../../data/literacy'
-import { SPARKS_PER_ROUND, SPARKS_COMPLETION_BONUS } from '../../../data/literacy'
+import { shuffle, SPARKS_PER_ROUND, SPARKS_COMPLETION_BONUS } from '../../../data/literacy'
 
 const ROUNDS_PER_GAME = 5
 
@@ -26,29 +26,28 @@ interface Props {
   onBack: () => void
 }
 
-export function FingerWriting({ onComplete, onBack }: Props) {
-  const { language, isRTL, age } = useApp()
+export function NumberTracing({ onComplete, onBack }: Props) {
+  const { isRTL, age } = useApp()
   const { say, playCorrect, playSpark } = useAudio()
   const { completeGame } = useProgress()
 
-  const [items] = useState<TracingItem[]>(() => {
-    const cat = language === 'he' ? 'letter-he' : 'letter-en'
-    return shuffle(getTracingItems(cat, age)).slice(0, ROUNDS_PER_GAME)
-  })
+  const [items] = useState<TracingItem[]>(() =>
+    shuffle(getTracingItems('number', age)).slice(0, ROUNDS_PER_GAME)
+  )
 
-  const [roundIdx,      setRoundIdx]      = useState(0)
-  const [totalSparks,   setTotalSparks]   = useState(0)
+  const [roundIdx,       setRoundIdx]       = useState(0)
+  const [totalSparks,    setTotalSparks]    = useState(0)
   const [showCelebration, setShowCelebration] = useState(false)
-  const [celebMessage,  setCelebMessage]  = useState('')
+  const [celebMessage,   setCelebMessage]   = useState('')
   const [mood, setMood] = useState<'idle' | 'happy' | 'excited' | 'thinking' | 'encouraging'>('thinking')
 
   const current = items[roundIdx]
 
-  // Announce the letter when round starts
+  // Announce the digit name when round starts
   useEffect(() => {
     if (!current) return
     setMood('thinking')
-    const t = setTimeout(() => say(current.ttsName), 450)
+    const t = setTimeout(() => say(current.ttsName), 400)
     return () => clearTimeout(t)
   }, [roundIdx, current, say])
 
@@ -56,13 +55,13 @@ export function FingerWriting({ onComplete, onBack }: Props) {
     playCorrect()
     setMood('excited')
 
-    const earned    = SPARKS_PER_ROUND
-    const newTotal  = totalSparks + earned
+    const earned   = SPARKS_PER_ROUND
+    const newTotal = totalSparks + earned
     setTotalSparks(newTotal)
 
     const msgs = isRTL
-      ? ['יפה מאוד! ✍️', 'מדהים! 🌟', 'כתבת אותה! ⭐', 'ואו! 🎉', 'מושלם! 💫']
-      : ['Beautiful! ✍️', 'Amazing! 🌟', 'You wrote it! ⭐', 'Wow! 🎉', 'Perfect! 💫']
+      ? ['כתבת את ה-' + current.displayChar + '! 🌟', 'מדהים! ✨', 'יפה! ⭐', 'מושלם! 🎉']
+      : ['You wrote ' + current.displayChar + '! 🌟', 'Amazing! ✨', 'Great job! ⭐', 'Perfect! 🎉']
     setCelebMessage(msgs[Math.floor(Math.random() * msgs.length)])
     setShowCelebration(true)
 
@@ -70,7 +69,7 @@ export function FingerWriting({ onComplete, onBack }: Props) {
       setShowCelebration(false)
       playSpark()
       if (roundIdx + 1 >= ROUNDS_PER_GAME) {
-        completeGame('literacy', 'finger-writing', 100)
+        completeGame('math', 'number-tracing', 100)
         setTimeout(() => onComplete(newTotal + SPARKS_COMPLETION_BONUS), 500)
       } else {
         setRoundIdx(r => r + 1)
@@ -83,7 +82,7 @@ export function FingerWriting({ onComplete, onBack }: Props) {
 
   return (
     <GameShell
-      title={isRTL ? '✍️ כתיבה באצבע' : '✍️ Finger Writing'}
+      title={isRTL ? '✍️ כתיבת מספרים' : '✍️ Number Writing'}
       round={roundIdx + 1}
       totalRounds={ROUNDS_PER_GAME}
       mood={mood}
@@ -105,7 +104,7 @@ export function FingerWriting({ onComplete, onBack }: Props) {
             exit={{ opacity: 0, scale: 0.88 }}
             transition={{ type: 'spring', stiffness: 240, damping: 20 }}
           >
-            {/* Letter name + hear button */}
+            {/* Number display + hear button */}
             <div className="flex items-center gap-3">
               <motion.button
                 className="flex items-center gap-2 px-3 py-2 rounded-full
@@ -117,23 +116,27 @@ export function FingerWriting({ onComplete, onBack }: Props) {
               >
                 🔊
               </motion.button>
-              <span
-                className="text-white font-bold text-2xl"
-                style={{ fontFamily: 'Fredoka One, Nunito, Heebo, sans-serif' }}
+
+              {/* Big digit preview */}
+              <motion.span
+                className="text-6xl font-bold ltr-number"
+                style={{
+                  fontFamily: 'Fredoka One, Nunito, sans-serif',
+                  color: '#F59E0B',
+                  textShadow: '0 0 20px rgba(245,158,11,0.5)',
+                }}
+                animate={{ scale: [1, 1.08, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
               >
                 {current.displayChar}
-              </span>
-              <span className="text-white/55 text-lg"
-                style={{ fontFamily: 'Nunito, Heebo, sans-serif' }}>
-                {current.ttsName}
-              </span>
+              </motion.span>
             </div>
 
             <p className="text-white/45 text-sm text-center"
               style={{ fontFamily: 'Nunito, Heebo, sans-serif' }}>
               {isRTL
-                ? '✍️ עקבי אחרי האות — התחילי מהנקודה הירוקה'
-                : '✍️ Trace the letter — start from the green dot'}
+                ? '✍️ עקבי אחרי המספר — התחילי מהנקודה הירוקה'
+                : '✍️ Trace the number — start from the green dot'}
             </p>
 
             {/* The tracer canvas */}

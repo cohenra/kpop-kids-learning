@@ -68,6 +68,12 @@ export const LETTERS_HE: LetterItem[] = [
   { letter: 'ר', sound: 'ריש — כמו ריקוד',  emoji: '💃', word: 'ריקוד' },
   { letter: 'ש', sound: 'שין — כמו שמש',    emoji: '☀️', word: 'שמש'   },
   { letter: 'ת', sound: 'תו — כמו תפוח',    emoji: '🍎', word: 'תפוח'  },
+  // Final forms (sofit) — appear at the end of words, look different but sound the same
+  { letter: 'ך', sound: 'כף סופית — כמו מלך',  emoji: '👑', word: 'מלך'  },
+  { letter: 'ם', sound: 'מם סופית — כמו שלום', emoji: '🕊️', word: 'שלום' },
+  { letter: 'ן', sound: 'נון סופית — כמו גן',   emoji: '🌱', word: 'גן'   },
+  { letter: 'ף', sound: 'פא סופית — כמו כף',   emoji: '🥄', word: 'כף'   },
+  { letter: 'ץ', sound: 'צדי סופית — כמו ארץ', emoji: '🌍', word: 'ארץ'  },
 ]
 
 export function getLetters(lang: Language): LetterItem[] {
