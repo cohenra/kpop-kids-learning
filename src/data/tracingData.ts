@@ -3,16 +3,15 @@
 // SVG paths, start points, and writing-guide lines for letter/number tracing.
 //
 // Coordinate system: viewBox '0 0 100 140'
-//   topLine  = y 15  (tall letters touch this — also lamed ascender)
+//   topLine  = y 15  (tall letters — lamed ascender touches here)
 //   midLine  = y 70  (x-height reference)
-//   baseLine = y 115 (all letters sit here; descenders go below to ~132)
+//   baseLine = y 115 (all letters sit on this line)
+//   descLine = y 133 (descenders: ק ף ץ ך ן drop to here)
 //
-// Stroke order follows standard school teaching conventions:
-//   English — Zaner-Bloser manuscript print
-//   Hebrew  — Israeli block print (דפוס בלוק)
+// Hebrew paths reflect standard Israeli BLOCK PRINT (דפוס בלוק) as taught
+// in Israeli elementary schools.  Stroke order follows the school convention.
 //
-// Multi-stroke letters present strokes one at a time in correct order,
-// so children learn the right sequence from the start.
+// English paths follow Zaner-Bloser manuscript print conventions.
 
 export interface TracingStroke {
   path: string                         // SVG path d= attribute
@@ -21,9 +20,9 @@ export interface TracingStroke {
 
 export interface TracingItem {
   id: string
-  displayChar: string        // large hint glyph shown beside the canvas
+  displayChar: string        // large hint glyph beside the canvas
   ttsName: string            // spoken via Web Speech API
-  strokes: TracingStroke[]   // ordered; child traces one at a time
+  strokes: TracingStroke[]   // ordered — child traces one at a time
   viewBox: string            // always '0 0 100 140'
   topLine: number            // y = 15
   midLine: number            // y = 70
@@ -180,10 +179,7 @@ export const TRACING_LETTERS_EN: TracingItem[] = [
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-en',
     strokes: [
       { path: 'M 20 15 L 20 115', startPoint: { x: 20, y: 15 } },
-      {
-        path: 'M 20 15 Q 80 15 80 45 Q 80 65 20 65',
-        startPoint: { x: 20, y: 15 },
-      },
+      { path: 'M 20 15 Q 80 15 80 45 Q 80 65 20 65', startPoint: { x: 20, y: 15 } },
     ],
   },
   {
@@ -202,10 +198,7 @@ export const TRACING_LETTERS_EN: TracingItem[] = [
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-en',
     strokes: [
       { path: 'M 20 15 L 20 115', startPoint: { x: 20, y: 15 } },
-      {
-        path: 'M 20 15 Q 80 15 80 45 Q 80 65 20 65 L 82 115',
-        startPoint: { x: 20, y: 15 },
-      },
+      { path: 'M 20 15 Q 80 15 80 45 Q 80 65 20 65 L 82 115', startPoint: { x: 20, y: 15 } },
     ],
   },
   {
@@ -247,10 +240,7 @@ export const TRACING_LETTERS_EN: TracingItem[] = [
     id: 'en-W', displayChar: 'W', ttsName: 'W',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-en',
     strokes: [
-      {
-        path: 'M 10 15 L 28 115 L 50 68 L 72 115 L 90 15',
-        startPoint: { x: 10, y: 15 },
-      },
+      { path: 'M 10 15 L 28 115 L 50 68 L 72 115 L 90 15', startPoint: { x: 10, y: 15 } },
     ],
   },
   {
@@ -273,280 +263,288 @@ export const TRACING_LETTERS_EN: TracingItem[] = [
     id: 'en-Z', displayChar: 'Z', ttsName: 'Z',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-en',
     strokes: [
-      {
-        path: 'M 15 15 L 85 15 L 15 115 L 85 115',
-        startPoint: { x: 15, y: 15 },
-      },
+      { path: 'M 15 15 L 85 15 L 15 115 L 85 115', startPoint: { x: 15, y: 15 } },
     ],
   },
 ]
 
 // ─── Hebrew Block Letters — כל האלפבית ────────────────────────────────────────
-// א ב ג ד ה ו ז ח ט י כ ל מ נ ס ע פ צ ק ר ש ת
-// Plus 5 sofit forms: ך ם ן ף ץ
 //
-// Stroke direction: Hebrew is RTL, strokes generally start from the right.
-// Paths reflect standard Israeli school block-print (דפוס) conventions.
-// Letters with descenders (ק ף ץ ך ן) drop below baseLine toward y=132.
+// Every path has been drawn to match standard Israeli block-print (דפוס):
+//
+//   ב = ⊏  (rectangular bracket, open top-right)
+//   ג = reversed-L with small right foot
+//   ד = Γ  (horizontal top → right leg down, like ˥)
+//   ה = like ח but left leg is shorter + inner hanging leg from roof
+//   ח = ∩  (arch open at bottom — both legs reach baseline)
+//   כ = C  (open rounded bracket)
+//   ל = tall ascending hook above other letters
+//   ר = like ד but junction is rounded (like backwards J)
+//   ש = U-arch with inner tooth
+//   ת = two legs, right leg has inward curved foot
+//
+// Letters with descenders (ק ף ץ ך ן) drop to y=133 (below baseLine).
 
 export const TRACING_LETTERS_HE: TracingItem[] = [
   // ── א ────────────────────────────────────────────────────────────────────────
+  // Main diagonal (upper-right → lower-left) + upper-left arm + lower-right arm
   {
     id: 'he-alef', displayChar: 'א', ttsName: 'אָלֶף',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
-      { path: 'M 72 25 L 28 100',  startPoint: { x: 72, y: 25 } }, // main diagonal
-      { path: 'M 22 30 L 52 58',   startPoint: { x: 22, y: 30 } }, // upper-left arm
-      { path: 'M 48 68 L 78 97',   startPoint: { x: 48, y: 68 } }, // lower-right arm
+      { path: 'M 72 24 L 28 106',  startPoint: { x: 72, y: 24 } },
+      { path: 'M 18 28 L 52 55',   startPoint: { x: 18, y: 28 } },
+      { path: 'M 48 78 L 80 106',  startPoint: { x: 48, y: 78 } },
     ],
   },
   // ── ב ────────────────────────────────────────────────────────────────────────
+  // Rectangular bracket open at the top-right: top bar → left leg → bottom bar
   {
     id: 'he-bet', displayChar: 'ב', ttsName: 'בֵּית',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 82 22 L 20 22 L 20 92 Q 20 115 52 115 Q 82 115 82 92',
-        startPoint: { x: 82, y: 22 },
+        path: 'M 82 24 L 18 24 L 18 110 L 82 110',
+        startPoint: { x: 82, y: 24 },
       },
     ],
   },
   // ── ג ────────────────────────────────────────────────────────────────────────
+  // Top bar (right→left) + left leg going down + small right foot at bottom
   {
     id: 'he-gimel', displayChar: 'ג', ttsName: 'גִּימֶל',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 78 22 L 22 22 L 22 85 Q 22 115 48 115',
-        startPoint: { x: 78, y: 22 },
+        path: 'M 80 24 L 20 24 L 20 106 L 48 115',
+        startPoint: { x: 80, y: 24 },
       },
     ],
   },
   // ── ד ────────────────────────────────────────────────────────────────────────
+  // ˥ shape: wide horizontal top (left→right) + right leg down
   {
     id: 'he-dalet', displayChar: 'ד', ttsName: 'דָּלֶת',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 22 22 L 78 22 Q 80 22 80 38 L 80 115',
-        startPoint: { x: 22, y: 22 },
+        path: 'M 16 24 L 84 24 Q 86 24 86 40 L 86 115',
+        startPoint: { x: 16, y: 24 },
       },
     ],
   },
   // ── ה ────────────────────────────────────────────────────────────────────────
-  // Top bar + left leg (partial height), plus inner hanging vertical on right
+  // Top bar + right full leg + left partial leg (stops at mid) + inner hanging stroke
+  // Distinguished from ח: left side has a GAP at the bottom
   {
     id: 'he-hey', displayChar: 'ה', ttsName: 'הֵא',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
-      { path: 'M 80 22 L 22 22 L 22 68', startPoint: { x: 80, y: 22 } }, // top + partial left
-      { path: 'M 55 22 L 55 115',         startPoint: { x: 55, y: 22 } }, // inner hanging leg
+      { path: 'M 84 24 L 18 24 L 18 65', startPoint: { x: 84, y: 24 } },  // top bar + partial left
+      { path: 'M 84 24 L 84 115',         startPoint: { x: 84, y: 24 } },  // right full leg
+      { path: 'M 52 24 L 52 115',          startPoint: { x: 52, y: 24 } },  // inner hanging leg
     ],
   },
   // ── ו ────────────────────────────────────────────────────────────────────────
+  // Small hook/serif at top-right, then straight line down
   {
     id: 'he-vav', displayChar: 'ו', ttsName: 'וָו',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
-      { path: 'M 44 22 Q 58 22 60 34 L 60 115', startPoint: { x: 44, y: 22 } },
+      { path: 'M 40 24 Q 58 24 60 38 L 60 115', startPoint: { x: 40, y: 24 } },
     ],
   },
   // ── ז ────────────────────────────────────────────────────────────────────────
-  // Top bar right-to-left, then diagonal stem down-left
+  // Horizontal top bar (left→right, with right corner hook) + diagonal going down-left
   {
     id: 'he-zayin', displayChar: 'ז', ttsName: 'זַיִן',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 25 22 L 75 22 Q 78 22 78 35 L 58 115',
-        startPoint: { x: 25, y: 22 },
+        path: 'M 22 24 L 78 24 Q 82 24 80 40 L 58 115',
+        startPoint: { x: 22, y: 24 },
       },
     ],
   },
   // ── ח ────────────────────────────────────────────────────────────────────────
-  // Arch open at bottom — two full verticals connected at top
+  // ∩ arch open at bottom — BOTH legs go all the way to baseline (unlike ה)
   {
     id: 'he-het', displayChar: 'ח', ttsName: 'חֵית',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
-      { path: 'M 80 22 L 22 22 L 22 115', startPoint: { x: 80, y: 22 } }, // top + left leg
-      { path: 'M 80 22 L 80 115',          startPoint: { x: 80, y: 22 } }, // right leg
+      { path: 'M 84 24 L 18 24 L 18 115', startPoint: { x: 84, y: 24 } },
+      { path: 'M 84 24 L 84 115',           startPoint: { x: 84, y: 24 } },
     ],
   },
   // ── ט ────────────────────────────────────────────────────────────────────────
-  // Rounded container open at top-right, with inner vertical
+  // Rounded container open at top-right + inner vertical stroke
   {
     id: 'he-tet', displayChar: 'ט', ttsName: 'טֵית',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 78 28 Q 15 22 15 68 Q 15 115 50 115 Q 85 115 85 68 Q 85 38 62 28',
-        startPoint: { x: 78, y: 28 },
+        path: 'M 80 30 Q 16 20 16 68 Q 16 115 50 115 Q 84 115 84 68 Q 84 36 64 26',
+        startPoint: { x: 80, y: 30 },
       },
-      { path: 'M 50 28 L 50 95', startPoint: { x: 50, y: 28 } },
+      { path: 'M 50 26 L 50 96', startPoint: { x: 50, y: 26 } },
     ],
   },
   // ── י ────────────────────────────────────────────────────────────────────────
-  // Small comma-like stroke — the smallest letter
+  // Tiny comma-like stroke — the smallest Hebrew letter
   {
     id: 'he-yod', displayChar: 'י', ttsName: 'יוֹד',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 42 22 Q 62 22 65 42 Q 68 60 58 72',
-        startPoint: { x: 42, y: 22 },
+        path: 'M 38 24 Q 64 24 66 44 Q 68 64 55 74',
+        startPoint: { x: 38, y: 24 },
       },
     ],
   },
   // ── כ ────────────────────────────────────────────────────────────────────────
-  // Top bar + left leg + curved bottom (open on the right like a backwards C)
+  // C shape (open on the right) — rounded bracket
   {
     id: 'he-kaf', displayChar: 'כ', ttsName: 'כַּף',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 80 22 L 22 22 L 22 92 Q 22 115 55 115 Q 80 115 80 92',
-        startPoint: { x: 80, y: 22 },
+        path: 'M 84 36 Q 84 24 50 24 Q 16 24 16 68 Q 16 115 50 115 Q 84 115 84 96',
+        startPoint: { x: 84, y: 36 },
       },
     ],
   },
   // ── ל ────────────────────────────────────────────────────────────────────────
-  // Ascender above topLine — the tallest Hebrew letter
+  // Tall letter — ascender curves above topLine. Start at baseline, go up then curve right.
   {
     id: 'he-lamed', displayChar: 'ל', ttsName: 'לָמֶד',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 58 115 L 58 55 Q 58 22 38 14 Q 20 6 18 22',
-        startPoint: { x: 58, y: 115 },
+        path: 'M 60 115 L 60 52 Q 60 22 40 13 Q 20 5 18 22',
+        startPoint: { x: 60, y: 115 },
       },
     ],
   },
   // ── מ ────────────────────────────────────────────────────────────────────────
+  // Top bar + left leg + curved bottom + inner loop + tail going down-right
   {
     id: 'he-mem', displayChar: 'מ', ttsName: 'מֵם',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 80 22 L 22 22 L 22 75 Q 22 98 52 98 Q 80 98 80 75 L 80 98 L 65 115',
-        startPoint: { x: 80, y: 22 },
+        path: 'M 84 24 L 18 24 L 18 78 Q 18 100 50 100 Q 84 100 84 78 L 84 100 L 66 115',
+        startPoint: { x: 84, y: 24 },
       },
     ],
   },
   // ── נ ────────────────────────────────────────────────────────────────────────
-  // Small hook at top-right, vertical down, foot going left
+  // Small right hook at top, body down on the right, foot going LEFT at baseline
   {
     id: 'he-nun', displayChar: 'נ', ttsName: 'נוּן',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 42 22 Q 65 22 68 40 L 68 115 L 22 115',
-        startPoint: { x: 42, y: 22 },
+        path: 'M 40 24 Q 66 24 68 42 L 68 115 L 18 115',
+        startPoint: { x: 40, y: 24 },
       },
     ],
   },
   // ── ס ────────────────────────────────────────────────────────────────────────
-  // Closed oval (samech is a complete circle)
+  // Closed oval — like the letter O
   {
     id: 'he-samech', displayChar: 'ס', ttsName: 'סָמֶך',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 50 22 Q 88 22 88 68 Q 88 115 50 115 Q 12 115 12 68 Q 12 22 50 22',
-        startPoint: { x: 50, y: 22 },
+        path: 'M 50 24 Q 86 24 86 68 Q 86 115 50 115 Q 14 115 14 68 Q 14 24 50 24',
+        startPoint: { x: 50, y: 24 },
       },
     ],
   },
   // ── ע ────────────────────────────────────────────────────────────────────────
-  // Two curves meeting at the bottom (Y shape)
+  // Two legs that curve inward and meet at a single point at the bottom
   {
     id: 'he-ayin', displayChar: 'ע', ttsName: 'עַיִן',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
-      {
-        path: 'M 18 22 Q 16 62 44 82 Q 52 88 52 115',
-        startPoint: { x: 18, y: 22 },
-      },
-      {
-        path: 'M 82 22 Q 84 62 56 82 Q 52 88 52 115',
-        startPoint: { x: 82, y: 22 },
-      },
+      { path: 'M 16 24 Q 12 65 42 85 Q 50 90 50 115', startPoint: { x: 16, y: 24 } },
+      { path: 'M 84 24 Q 88 65 58 85 Q 50 90 50 115', startPoint: { x: 84, y: 24 } },
     ],
   },
   // ── פ ────────────────────────────────────────────────────────────────────────
-  // Frame with inner rounded head (like a backwards P)
+  // Outer frame (top bar + left leg + bottom bar) + inner rounded head at top-right
   {
     id: 'he-pe', displayChar: 'פ', ttsName: 'פֵּא',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 80 22 L 22 22 L 22 115 Q 22 115 80 115 Q 80 115 80 62 Q 80 40 55 40 Q 35 40 22 54',
-        startPoint: { x: 80, y: 22 },
+        path: 'M 84 24 L 18 24 L 18 115 L 84 115 Q 84 115 84 64 Q 84 42 56 42 Q 36 42 18 56',
+        startPoint: { x: 84, y: 24 },
       },
     ],
   },
   // ── צ ────────────────────────────────────────────────────────────────────────
-  // Two legs with an arch connecting them at top
+  // U-shape connecting two legs at the bottom + arch at the top
   {
     id: 'he-tsadi', displayChar: 'צ', ttsName: 'צָדִי',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 22 22 L 22 92 Q 22 115 52 115 Q 82 115 82 92 L 82 22',
-        startPoint: { x: 22, y: 22 },
+        path: 'M 18 24 L 18 96 Q 18 115 50 115 Q 82 115 82 96 L 82 24',
+        startPoint: { x: 18, y: 24 },
       },
-      {
-        path: 'M 22 50 Q 52 22 82 50',
-        startPoint: { x: 22, y: 50 },
-      },
+      { path: 'M 18 52 Q 50 24 82 52', startPoint: { x: 18, y: 52 } },
     ],
   },
   // ── ק ────────────────────────────────────────────────────────────────────────
-  // Oval body + right descending leg below baseline
+  // Oval body + right leg that drops BELOW the baseline (descender)
   {
     id: 'he-kuf', displayChar: 'ק', ttsName: 'קוֹף',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 50 22 Q 86 22 86 65 Q 86 108 50 108 Q 14 108 14 65 Q 14 22 50 22',
-        startPoint: { x: 50, y: 22 },
+        path: 'M 50 24 Q 86 24 86 68 Q 86 110 50 110 Q 14 110 14 68 Q 14 24 50 24',
+        startPoint: { x: 50, y: 24 },
       },
-      { path: 'M 80 68 L 80 132', startPoint: { x: 80, y: 68 } },
+      { path: 'M 82 68 L 82 133', startPoint: { x: 82, y: 68 } },
     ],
   },
   // ── ר ────────────────────────────────────────────────────────────────────────
-  // Top bar + right corner + vertical leg (backwards J shape)
+  // Horizontal top (left→right) + rounded corner + right leg down
+  // (like ד but with a smooth rounded shoulder instead of sharp corner)
   {
     id: 'he-resh', displayChar: 'ר', ttsName: 'רֵישׁ',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 22 22 L 78 22 Q 80 22 80 40 L 80 115',
-        startPoint: { x: 22, y: 22 },
+        path: 'M 16 24 L 80 24 Q 86 24 86 50 L 86 115',
+        startPoint: { x: 16, y: 24 },
       },
     ],
   },
   // ── ש ────────────────────────────────────────────────────────────────────────
+  // U-arch (like צ outer shape) + middle tooth hanging from the top
   {
     id: 'he-shin', displayChar: 'ש', ttsName: 'שִׁין',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 12 22 L 12 85 Q 12 115 50 115 Q 88 115 88 85 L 88 22',
-        startPoint: { x: 12, y: 22 },
+        path: 'M 12 24 L 12 86 Q 12 115 50 115 Q 88 115 88 86 L 88 24',
+        startPoint: { x: 12, y: 24 },
       },
       { path: 'M 50 72 L 50 115', startPoint: { x: 50, y: 72 } },
     ],
   },
   // ── ת ────────────────────────────────────────────────────────────────────────
+  // Left leg (full, straight) + top bar + right leg that ends with a curved inward foot
   {
     id: 'he-tav', displayChar: 'ת', ttsName: 'תָּו',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
-      { path: 'M 18 22 L 18 115', startPoint: { x: 18, y: 22 } },
+      { path: 'M 18 24 L 18 115', startPoint: { x: 18, y: 24 } },
       {
-        path: 'M 18 22 L 82 22 L 82 78 Q 82 68 52 68 Q 22 68 18 78',
-        startPoint: { x: 18, y: 22 },
+        path: 'M 18 24 L 84 24 L 84 80 Q 84 95 65 98 Q 48 100 42 90',
+        startPoint: { x: 18, y: 24 },
       },
     ],
   },
@@ -554,71 +552,58 @@ export const TRACING_LETTERS_HE: TracingItem[] = [
   // ── אותיות סופיות ─────────────────────────────────────────────────────────────
 
   // ── ך (כף סופית) ────────────────────────────────────────────────────────────
-  // Like כ but the right/outer leg drops below the baseline
+  // Like כ but the leg drops straight below the baseline (no bottom curve)
   {
     id: 'he-kaf-sofit', displayChar: 'ך', ttsName: 'כַּף סוֹפִית',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
-      {
-        path: 'M 22 115 L 22 22 L 78 22 L 78 132',
-        startPoint: { x: 22, y: 115 },
-      },
+      { path: 'M 84 36 Q 84 24 50 24 Q 16 24 16 68 L 16 115', startPoint: { x: 84, y: 36 } },
+      { path: 'M 84 24 L 84 133', startPoint: { x: 84, y: 24 } },
     ],
   },
   // ── ם (מם סופית) ────────────────────────────────────────────────────────────
-  // Closed rectangle (unlike open מ)
+  // Closed rectangle (unlike open מ — this one is a sealed box)
   {
     id: 'he-mem-sofit', displayChar: 'ם', ttsName: 'מֵם סוֹפִית',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 80 22 L 20 22 L 20 115 L 80 115 L 80 22',
-        startPoint: { x: 80, y: 22 },
+        path: 'M 84 24 L 16 24 L 16 115 L 84 115 L 84 24',
+        startPoint: { x: 84, y: 24 },
       },
     ],
   },
   // ── ן (נון סופית) ────────────────────────────────────────────────────────────
-  // Straight vertical with hook at top, drops well below baseline
+  // Hook at top, straight vertical going well below baseline — no foot
   {
     id: 'he-nun-sofit', displayChar: 'ן', ttsName: 'נוּן סוֹפִית',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
       {
-        path: 'M 38 22 Q 58 22 62 38 L 62 132',
-        startPoint: { x: 38, y: 22 },
+        path: 'M 36 24 Q 62 24 65 42 L 65 133',
+        startPoint: { x: 36, y: 24 },
       },
     ],
   },
   // ── ף (פא סופית) ────────────────────────────────────────────────────────────
-  // Head of פ with a long descender dropping below baseline
+  // Head of פ + a long central leg that drops below the baseline
   {
     id: 'he-pe-sofit', displayChar: 'ף', ttsName: 'פֵּא סוֹפִית',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
-      {
-        path: 'M 80 22 L 22 22 L 22 115',
-        startPoint: { x: 80, y: 22 },
-      },
-      {
-        path: 'M 62 22 L 62 132',
-        startPoint: { x: 62, y: 22 },
-      },
+      { path: 'M 84 24 L 18 24 L 18 115', startPoint: { x: 84, y: 24 } },
+      { path: 'M 65 24 L 65 133',           startPoint: { x: 65, y: 24 } },
     ],
   },
   // ── ץ (צדי סופית) ────────────────────────────────────────────────────────────
-  // Like צ but both legs descend below baseline
+  // Like צ but both legs drop below the baseline
   {
     id: 'he-tsadi-sofit', displayChar: 'ץ', ttsName: 'צָדִי סוֹפִית',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'letter-he',
     strokes: [
-      {
-        path: 'M 22 22 L 22 132 M 82 22 L 82 132',
-        startPoint: { x: 22, y: 22 },
-      },
-      {
-        path: 'M 22 50 Q 52 22 82 50',
-        startPoint: { x: 22, y: 50 },
-      },
+      { path: 'M 18 24 L 18 133', startPoint: { x: 18, y: 24 } },
+      { path: 'M 82 24 L 82 133', startPoint: { x: 82, y: 24 } },
+      { path: 'M 18 54 Q 50 24 82 54', startPoint: { x: 18, y: 54 } },
     ],
   },
 ]
@@ -702,12 +687,10 @@ export const TRACING_NUMBERS: TracingItem[] = [
     id: 'num-8', displayChar: '8', ttsName: '8',
     viewBox: VB, topLine: TOP, midLine: MID, baseLine: BASE, category: 'number',
     strokes: [
-      // top loop
       {
         path: 'M 50 65 Q 82 65 82 40 Q 82 15 50 15 Q 18 15 18 40 Q 18 65 50 65',
         startPoint: { x: 50, y: 65 },
       },
-      // bottom loop
       {
         path: 'M 50 65 Q 82 65 82 90 Q 82 115 50 115 Q 18 115 18 90 Q 18 65 50 65',
         startPoint: { x: 50, y: 65 },
@@ -729,12 +712,11 @@ export const TRACING_NUMBERS: TracingItem[] = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Returns the tracing items for a given category and age.
- * Age 3: first 4 items (simpler, low stroke-count).
+ * Returns tracing items for a given category and age.
+ * Age 3: first 4 items (simpler, lower stroke count).
  * Age 5: all items.
- *
- * The pools are ordered from simplest to most complex, so slicing
- * from the front always gives the most age-appropriate subset.
+ * Pools are ordered simplest → most complex, so slicing from the front
+ * always gives the most age-appropriate subset.
  */
 export function getTracingItems(
   category: 'letter-en' | 'letter-he' | 'number',

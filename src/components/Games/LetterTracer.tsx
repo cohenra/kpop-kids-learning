@@ -23,11 +23,16 @@ import type { TracingItem } from '../../data/tracingData'
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 // Proximity tolerance in SVG units (viewBox is 100×140).
-// 13 units ≈ a generous finger-width at this scale.
-const TOLERANCE = 13
+// 9 units ≈ a finger-width; generous but not trivially easy.
+const TOLERANCE = 9
 
-// Fraction of the path that must be covered to pass
-const MIN_COVERAGE = 0.42
+// Fraction of the path that must be covered to pass.
+// 72% prevents a single random line from accidentally succeeding.
+const MIN_COVERAGE = 0.72
+
+// Minimum accumulated drawn points before we check coverage at all.
+// Prevents instant success from an accidental tap or tiny doodle.
+const MIN_POINTS = 18
 
 const CANVAS_SIZE = 280
 
@@ -160,15 +165,21 @@ export function LetterTracer({ item, onSuccess }: Props) {
     if (!isPressing) return
     setIsPressing(false)
 
+    // Merge the active stroke into accumulated drawn points for this stroke.
+    // This means children can lift their finger and continue — all lifts
+    // within a single "stroke" are combined before evaluation.
     const all = [...drawn, ...activePts]
     setDrawn(all)
     setActivePts([])
 
-    if (all.length < 5) return  // too few points — wait for more
+    // Need enough points to form a meaningful trace before evaluating.
+    if (all.length < MIN_POINTS) return
 
     const cov = calcCoverage(all)
     setCoverage(cov)
 
+    // Only celebrate when the child has genuinely covered most of the path.
+    // Low coverage just lets them keep drawing — no penalty, no red X.
     if (cov >= MIN_COVERAGE) {
       setPhase('stroke-ok')
       setDoneStrokes(prev => [...prev, all])
@@ -183,7 +194,8 @@ export function LetterTracer({ item, onSuccess }: Props) {
         }
       }, 900)
     }
-    // If coverage too low: just let them keep drawing (forgiving — no penalty)
+    // Below threshold → child keeps drawing on the same canvas.
+    // The progress bar shows them how close they are.
   }, [isPressing, drawn, activePts, calcCoverage, isLast, onSuccess])
 
   const handleClear = () => {
