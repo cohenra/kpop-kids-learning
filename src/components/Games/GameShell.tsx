@@ -32,7 +32,7 @@ export function GameShell({
   children,
   hideCharacter = false,
 }: GameShellProps) {
-  const { language, isRTL, activeProfile, profileColors, backArrow } = useApp()
+  const { language, isRTL, profileColors, backArrow } = useApp()
   const s = t(language)
 
   const progressPct = totalRounds > 0 ? (round / totalRounds) * 100 : 0

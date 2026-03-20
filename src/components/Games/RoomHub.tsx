@@ -66,7 +66,7 @@ export function RoomHub({
   games,
 }: RoomHubProps) {
   const navigate = useNavigate()
-  const { language, isRTL, addSparks, profileColors, backArrow } = useApp()
+  const { isRTL, addSparks, profileColors, backArrow } = useApp()
   const { isGameCompleted } = useProgress()
 
   const [activeGameId, setActiveGameId] = useState<string | null>(null)
