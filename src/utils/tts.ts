@@ -62,6 +62,25 @@ export function speak(text: string, lang: 'he' | 'en' = 'en'): void {
   window.speechSynthesis.speak(utter)
 }
 
+// ─── speakLyric: musical TTS for song lines (slower + higher pitch) ──────────
+//
+// Different from speak() — uses lower rate and higher pitch so it sounds
+// more playful / song-like when layered over the Web Audio synth music.
+// Does NOT expand nikud map — lyric lines are full words, not bare letters.
+//
+export function speakLyric(text: string, lang: 'he' | 'en' = 'en'): void {
+  if (!('speechSynthesis' in window)) return
+  window.speechSynthesis.cancel()
+
+  const utter = new SpeechSynthesisUtterance(text)
+  utter.lang   = lang === 'he' ? 'he-IL' : 'en-US'
+  utter.rate   = 0.72   // slower → more song-like delivery
+  utter.pitch  = 1.3    // higher → playful, musical feel
+  utter.volume = 0.9
+
+  window.speechSynthesis.speak(utter)
+}
+
 export function stopSpeaking(): void {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel()

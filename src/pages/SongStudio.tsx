@@ -10,7 +10,7 @@ import {
   type BuiltSong,
 } from '../data/songStudio'
 import { BAND_MEMBERS } from '../data/rewards'
-import { speak, stopSpeaking } from '../utils/tts'
+import { speak, speakLyric, stopSpeaking } from '../utils/tts'
 import { saveBuiltSong, getBuiltSong } from '../utils/storage'
 import { playSynthSong, type SynthResult } from '../utils/songSynth'
 
@@ -133,6 +133,9 @@ export function SongStudio() {
     synthResultRef.current?.stop()
     synthResultRef.current = null
 
+    // Stop TTS lyric voice
+    stopSpeaking()
+
     // Clear lyric timers
     lyricTimersRef.current.forEach(clearTimeout)
     lyricTimersRef.current = []
@@ -148,8 +151,12 @@ export function SongStudio() {
 
   const startPlayer = useCallback(() => {
     if (!song) return
+    stopSpeaking()
     setLineIdx(0)
     setIsPlaying(true)
+
+    // Capture lyrics for this language at call time
+    const lyricsNow = isHe ? song.lyricsHe : song.lyricsEn
 
     // Create/resume AudioContext
     const ctx = getOrCreateAudioCtx()
@@ -161,13 +168,21 @@ export function SongStudio() {
     )
     synthResultRef.current = result
 
-    // Schedule lyric line reveals using lyricTimesMs
-    // We have 6 lyric timestamps, mapped to indices 0..5
-    const timers = result.lyricTimesMs.map((ms, i) =>
+    // Schedule lyric line reveals + TTS voice in sync.
+    //
+    //  lyricTimesMs[i]         → visual line appears  (bar boundary)
+    //  lyricTimesMs[i] + 180ms → TTS starts speaking  (slight lag feels natural)
+    //
+    // The TTS voice sings each line over the instrumental; speakLyric() uses
+    // a slower rate + higher pitch so it sounds playful rather than robotic.
+    const timers = result.lyricTimesMs.flatMap((ms, i) => [
+      // Visual reveal
+      setTimeout(() => setLineIdx(i + 1), ms),
+      // Voiced lyric
       setTimeout(() => {
-        setLineIdx(i + 1)
-      }, ms)
-    )
+        if (lyricsNow[i]) speakLyric(lyricsNow[i], language)
+      }, ms + 180),
+    ])
     lyricTimersRef.current = timers
 
     // Mark done after full duration
@@ -175,7 +190,7 @@ export function SongStudio() {
       setIsPlaying(false)
     }, result.durationMs)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [song])
+  }, [song, isHe, language])
 
   // Award sparks once when player phase starts
   useEffect(() => {
