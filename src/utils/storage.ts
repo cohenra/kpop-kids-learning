@@ -82,10 +82,16 @@ function migrateRoot(raw: AppStorage): AppStorage {
     2: Array.isArray(raw.gameProgress?.[2]) ? raw.gameProgress![2] : [],
   }
 
+  // Ensure profiles always has both keys (guards against corrupted/missing storage)
+  const safeProfiles: AppStorage['profiles'] = {
+    1: (raw.profiles as AppStorage['profiles'] | undefined)?.[1] ?? null,
+    2: (raw.profiles as AppStorage['profiles'] | undefined)?.[2] ?? null,
+  }
+
   return {
     parentPin:      raw.parentPin      ?? null,
     roomLocks:      raw.roomLocks      ?? {},
-    profiles:       raw.profiles,
+    profiles:       safeProfiles,
     activeProfileId: (raw.activeProfileId === 1 || raw.activeProfileId === 2)
       ? raw.activeProfileId
       : 1,

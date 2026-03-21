@@ -10,6 +10,7 @@ import { OutfitStudio } from './pages/OutfitStudio'
 import { SongStudio } from './pages/SongStudio'
 import { DrawingRoom } from './pages/DrawingRoom'
 import { BandmateCelebrationLayer } from './components/UI/BandmateCelebration'
+import { ErrorBoundary } from './components/UI/ErrorBoundary'
 import { hasAnyProfile } from './utils/storage'
 
 // ─── Route guard: redirect to welcome if no profiles exist ───────────────────
@@ -47,10 +48,14 @@ function AppShell() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppProvider>
-        <AppShell />
-      </AppProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AppProvider>
+          <ErrorBoundary>
+            <AppShell />
+          </ErrorBoundary>
+        </AppProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }
