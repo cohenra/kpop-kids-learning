@@ -117,7 +117,8 @@ function loadRoot(): AppStorage {
   } catch {
     _cache = createDefaultStorage()
   }
-  return _cache
+  // _cache is always set by the branches above — this is a safety fallback.
+  return _cache ?? createDefaultStorage()
 }
 
 function saveRoot(data: AppStorage): void {
