@@ -35,6 +35,8 @@ export function StageView() {
   const stageProgressPct = Math.round((unlockedStageItems.length / STAGE_ITEMS.length) * 100)
 
   const totalGamesCompleted = getTotalCompleted()
+  const allMembersUnlocked  = unlockedBandMembers.length >= BAND_MEMBERS.length
+  const isConcert           = stageFullyBuilt && allMembersUnlocked
 
   return (
     <div
@@ -67,6 +69,26 @@ export function StageView() {
       {/* ── Scrollable content ─────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto scrollable px-4 py-4 space-y-5">
 
+        {/* ── Concert banner ──────────────────────────────────────────────── */}
+        {isConcert && (
+          <motion.div
+            className="text-center mb-2"
+            animate={{ scale: [1, 1.06, 1] }}
+            transition={{ duration: 1.2, repeat: Infinity }}
+          >
+            <p
+              className="text-2xl font-bold"
+              style={{
+                fontFamily: 'Fredoka One, Nunito, sans-serif',
+                color: '#F59E0B',
+                textShadow: '0 0 24px rgba(245,158,11,0.7)',
+              }}
+            >
+              🎤 {isRTL ? 'קונצרט! הלהקה המלאה על הבמה! 🎤' : 'Concert Time! Full band on stage! 🎤'}
+            </p>
+          </motion.div>
+        )}
+
         {/* ── Stage visualization — Concert Stage ────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -75,7 +97,9 @@ export function StageView() {
           style={{
             background: '#0A0818',
             minHeight: 220,
-            boxShadow: '0 0 40px rgba(124,58,237,0.3), 0 0 80px rgba(236,72,153,0.1)',
+            boxShadow: isConcert
+              ? '0 0 60px rgba(245,158,11,0.45), 0 0 120px rgba(236,72,153,0.25)'
+              : '0 0 40px rgba(124,58,237,0.3), 0 0 80px rgba(236,72,153,0.1)',
           }}
         >
           {/* ── LED Wall (back wall panels) ──────────────────────────── */}
@@ -218,18 +242,78 @@ export function StageView() {
             </div>
           )}
 
-          {/* ── Character on stage (center) ──────────────────────────── */}
-          <div
-            className="relative flex justify-center items-end z-10"
-            style={{ minHeight: 165, paddingTop: 28 }}
-          >
-            <Character
-              mood={stageFullyBuilt ? 'excited' : 'happy'}
-              size={125}
-              hairColor={profileColors.hair}
-              outfitColor={profileColors.outfit}
-            />
-          </div>
+          {/* ── Stage Performers — main character + unlocked band members ── */}
+          {(() => {
+            // Separate unlocked members into left/right of main character:
+            // Odd-index members fill the left side, even-index fill the right.
+            const unlockedData = BAND_MEMBERS.filter(m => unlockedBandMembers.includes(m.id))
+            const leftMembers  = unlockedData.filter((_, i) => i % 2 === 1).reverse()
+            const rightMembers = unlockedData.filter((_, i) => i % 2 === 0)
+            const count        = unlockedData.length
+            const mainSize     = count === 0 ? 115 : count <= 2 ? 92 : count <= 4 ? 82 : 75
+            const memberSize   = count <= 4 ? 60 : 54
+            const mood = isConcert ? 'excited' : stageFullyBuilt ? 'excited' : 'happy'
+
+            return (
+              <div
+                className="relative flex justify-center items-end z-10 overflow-hidden"
+                style={{ minHeight: 175, paddingTop: 28, paddingInline: 4, gap: 2 }}
+              >
+                {/* Left side members */}
+                {leftMembers.map((m, i) => (
+                  <motion.div
+                    key={m.id}
+                    initial={{ x: -80, opacity: 0 }}
+                    animate={{
+                      x: 0,
+                      opacity: 1,
+                      y: isConcert ? [0, -8, 0] : 0,
+                    }}
+                    transition={{
+                      x: { type: 'spring', stiffness: 180, damping: 20, delay: i * 0.08 },
+                      opacity: { duration: 0.4, delay: i * 0.08 },
+                      y: isConcert ? { duration: 0.65, repeat: Infinity, delay: i * 0.1, ease: 'easeInOut' } : {},
+                    }}
+                  >
+                    <Character mood={mood} size={memberSize} hairColor={m.hairColor} outfitColor={m.outfitColor} />
+                  </motion.div>
+                ))}
+
+                {/* Main character — always center */}
+                <motion.div
+                  animate={{ y: isConcert ? [0, -12, 0] : 0 }}
+                  transition={isConcert ? { duration: 0.65, repeat: Infinity, delay: 0.18, ease: 'easeInOut' } : {}}
+                >
+                  <Character
+                    mood={mood}
+                    size={mainSize}
+                    hairColor={profileColors.hair}
+                    outfitColor={profileColors.outfit}
+                  />
+                </motion.div>
+
+                {/* Right side members */}
+                {rightMembers.map((m, i) => (
+                  <motion.div
+                    key={m.id}
+                    initial={{ x: 80, opacity: 0 }}
+                    animate={{
+                      x: 0,
+                      opacity: 1,
+                      y: isConcert ? [0, -8, 0] : 0,
+                    }}
+                    transition={{
+                      x: { type: 'spring', stiffness: 180, damping: 20, delay: i * 0.08 },
+                      opacity: { duration: 0.4, delay: i * 0.08 },
+                      y: isConcert ? { duration: 0.65, repeat: Infinity, delay: (i + 0.4) * 0.1, ease: 'easeInOut' } : {},
+                    }}
+                  >
+                    <Character mood={mood} size={memberSize} hairColor={m.hairColor} outfitColor={m.outfitColor} />
+                  </motion.div>
+                ))}
+              </div>
+            )
+          })()}
 
           {/* ── Stage platform + floor ────────────────────────────────── */}
           <div className="relative">

@@ -46,7 +46,7 @@ const FONT_NUM = "'Nunito', 'Fredoka One', Arial, sans-serif"
 // Character render parameters (in viewBox units = canvas pixels since canvas
 // is created at exactly 100×140).
 const CHAR_FONT_SIZE = 92     // px / viewBox units
-const CHAR_BASELINE  = 115    // y-coordinate for alphabetic baseline
+const CHAR_BASELINE  = 100    // y-coordinate for alphabetic baseline (centers letter in 140-unit viewBox)
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
