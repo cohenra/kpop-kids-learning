@@ -23,6 +23,8 @@ export interface Profile {
   dailyMission?: DailyMissionState | null
   // Optional — added in v3; Outfit Studio customisation
   outfit?: import('../data/outfitItems').ProfileOutfit | null
+  // Optional — added in v4; Song Studio — last built song
+  builtSong?: import('../data/songStudio').BuiltSong | null
 }
 
 export interface GameProgress {
@@ -214,6 +216,25 @@ export function setRoomLock(roomId: string, locked: boolean): void {
   const data = loadRoot()
   data.roomLocks[roomId] = locked
   saveRoot(data)
+}
+
+// ─── Song Studio helpers ───────────────────────────────────────────────────────
+
+export function getBuiltSong(
+  profileId: 1 | 2
+): import('../data/songStudio').BuiltSong | null {
+  return loadRoot().profiles[profileId]?.builtSong ?? null
+}
+
+export function saveBuiltSong(
+  profileId: 1 | 2,
+  song: import('../data/songStudio').BuiltSong
+): void {
+  const data = loadRoot()
+  if (data.profiles[profileId]) {
+    data.profiles[profileId]!.builtSong = song
+    saveRoot(data)
+  }
 }
 
 // ─── Outfit helpers ────────────────────────────────────────────────────────────
