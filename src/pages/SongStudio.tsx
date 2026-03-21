@@ -12,15 +12,14 @@ import {
 import { BAND_MEMBERS } from '../data/rewards'
 import { speak, stopSpeaking } from '../utils/tts'
 import { saveBuiltSong, getBuiltSong } from '../utils/storage'
+import { playSynthSong, type SynthResult } from '../utils/songSynth'
 
 // ─── SongStudio ───────────────────────────────────────────────────────────────
 //
 // Phase flow:
 //   'questions'  →  5 questions, one at a time, each with 3 choices
-//   'player'     →  animated lyric display + beat + TTS + dancing members
+//   'player'     →  animated lyric display + Web Audio K-POP synth + dancing members
 //   'done'       →  celebration with replay / home buttons
-//
-// Beat engine: Web Audio oscillators. startBeat() returns a stop callback.
 //
 //   questions[0..4]
 //      │
@@ -28,8 +27,8 @@ import { saveBuiltSong, getBuiltSong } from '../utils/storage'
 //   buildLyrics()  →  BuiltSong  →  saved to localStorage
 //      │
 //      ▼
-//   player: speak line[i], advance after each utterance ends
-//      │  beat runs throughout
+//   player: synth song plays, lyrics advance by lyricTimesMs timers
+//      │
 //      ▼
 //   done: +20 ✨, replay / home
 
@@ -41,55 +40,6 @@ interface Answers {
   rhythm: string
   feeling: string
   ending: string
-}
-
-// ─── Beat engine ──────────────────────────────────────────────────────────────
-let _beatCtx: AudioContext | null = null
-
-function getBeatCtx(): AudioContext {
-  if (!_beatCtx || _beatCtx.state === 'closed') {
-    _beatCtx = new AudioContext()
-  }
-  return _beatCtx
-}
-
-function beatBeep(freq: number, dur: number, vol = 0.25, type: OscillatorType = 'sine') {
-  try {
-    const ctx = getBeatCtx()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.value = freq
-    osc.type = type
-    gain.gain.setValueAtTime(vol, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur / 1000)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + dur / 1000)
-  } catch { /* ignore */ }
-}
-
-function startBeat(rhythmId: string): () => void {
-  const bpm = RHYTHM_BPM[rhythmId] ?? 110
-  const beatMs = (60 / bpm) * 1000
-  let running = true
-  let beat = 0
-
-  const tick = () => {
-    if (!running) return
-    const pos = beat % 4
-    // Kick on 1 & 3
-    if (pos === 0 || pos === 2) beatBeep(90, 90, 0.35)
-    // Snare on 2 & 4
-    if (pos === 1 || pos === 3) beatBeep(220, 60, 0.15, 'square')
-    // Hi-hat every beat
-    beatBeep(8000, 15, 0.04, 'square')
-    beat++
-    setTimeout(tick, beatMs)
-  }
-
-  setTimeout(tick, 0)
-  return () => { running = false }
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -106,15 +56,29 @@ export function SongStudio() {
   const isHe = language === 'he'
 
   const [phase, setPhase]   = useState<Phase>('questions')
-  const [step, setStep]     = useState(0)           // 0-4 during questions
+  const [step, setStep]     = useState(0)
   const [answers, setAnswers] = useState<Partial<Answers>>({})
   const [song, setSong]     = useState<BuiltSong | null>(null)
 
   // Player state
   const [lineIdx, setLineIdx]   = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
-  const stopBeatRef  = useRef<(() => void) | null>(null)
+  const synthResultRef = useRef<SynthResult | null>(null)
+  const lyricTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const doneTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const audioCtxRef    = useRef<AudioContext | null>(null)
   const sparksGivenRef = useRef(false)
+
+  // ── Ensure AudioContext is created on first user gesture ──────────────────
+  function getOrCreateAudioCtx(): AudioContext {
+    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+      audioCtxRef.current = new AudioContext()
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume().catch(() => { /* ignore */ })
+    }
+    return audioCtxRef.current
+  }
 
   // On mount: check for existing song so returning players can replay
   useEffect(() => {
@@ -122,18 +86,19 @@ export function SongStudio() {
     if (existing) setSong(existing)
   }, [activeProfileId])
 
-  // Cleanup beat + TTS on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopBeatRef.current?.()
+      stopPlayer()
       stopSpeaking()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Question flow ──────────────────────────────────────────────────────────
   const currentQ = SONG_QUESTIONS[step]
 
-  // Read question aloud on step change
+  // Read question aloud on step change (TTS is fine for questions)
   useEffect(() => {
     if (phase !== 'questions') return
     const q = SONG_QUESTIONS[step]
@@ -150,7 +115,6 @@ export function SongStudio() {
     if (step < SONG_QUESTIONS.length - 1) {
       setStep((s) => s + 1)
     } else {
-      // All answers collected → build song
       const full = newAnswers as Answers
       const lyricsHe = buildLyrics(full, 'he')
       const lyricsEn = buildLyrics(full, 'en')
@@ -165,9 +129,20 @@ export function SongStudio() {
   const lyrics = song ? (isHe ? song.lyricsHe : song.lyricsEn) : []
 
   const stopPlayer = useCallback(() => {
-    stopBeatRef.current?.()
-    stopBeatRef.current = null
-    stopSpeaking()
+    // Stop synth
+    synthResultRef.current?.stop()
+    synthResultRef.current = null
+
+    // Clear lyric timers
+    lyricTimersRef.current.forEach(clearTimeout)
+    lyricTimersRef.current = []
+
+    // Clear done timer
+    if (doneTimerRef.current) {
+      clearTimeout(doneTimerRef.current)
+      doneTimerRef.current = null
+    }
+
     setIsPlaying(false)
   }, [])
 
@@ -175,10 +150,32 @@ export function SongStudio() {
     if (!song) return
     setLineIdx(0)
     setIsPlaying(true)
-    stopBeatRef.current = startBeat(song.rhythm)
-    speakLine(0, song, language, isHe, setLineIdx, setIsPlaying, stopBeatRef)
+
+    // Create/resume AudioContext
+    const ctx = getOrCreateAudioCtx()
+
+    // Play synth song
+    const result = playSynthSong(
+      { feeling: song.feeling, rhythm: song.rhythm, theme: song.theme },
+      ctx
+    )
+    synthResultRef.current = result
+
+    // Schedule lyric line reveals using lyricTimesMs
+    // We have 6 lyric timestamps, mapped to indices 0..5
+    const timers = result.lyricTimesMs.map((ms, i) =>
+      setTimeout(() => {
+        setLineIdx(i + 1)
+      }, ms)
+    )
+    lyricTimersRef.current = timers
+
+    // Mark done after full duration
+    doneTimerRef.current = setTimeout(() => {
+      setIsPlaying(false)
+    }, result.durationMs)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [song, language, isHe])
+  }, [song])
 
   // Award sparks once when player phase starts
   useEffect(() => {
@@ -198,12 +195,16 @@ export function SongStudio() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, song])
 
-  // Advance to 'done' when last line finishes
+  // Advance to 'done' when playback ends
   useEffect(() => {
-    if (phase === 'player' && lineIdx >= lyrics.length && !isPlaying && lyrics.length > 0) {
-      setPhase('done')
+    if (phase === 'player' && !isPlaying && lyrics.length > 0 && lineIdx >= 1) {
+      const t = setTimeout(() => setPhase('done'), 800)
+      return () => clearTimeout(t)
     }
-  }, [phase, lineIdx, lyrics.length, isPlaying])
+  }, [phase, isPlaying, lyrics.length, lineIdx])
+
+  // ── Beat indicator: derive from isPlaying ─────────────────────────────────
+  const bpmForRhythm = song ? (RHYTHM_BPM[song.rhythm] ?? 110) : 110
 
   // ── Band members for display ───────────────────────────────────────────────
   const unlockedData = BAND_MEMBERS.filter((m) => unlockedBandMembers.includes(m.id))
@@ -218,7 +219,7 @@ export function SongStudio() {
       <div className="flex items-center justify-between px-4 pt-4 pb-2 safe-top">
         <motion.button
           whileTap={{ scale: 0.9 }}
-          onClick={() => { stopPlayer(); navigate('/home') }}
+          onClick={() => { stopPlayer(); stopSpeaking(); navigate('/home') }}
           className="w-11 h-11 flex items-center justify-center rounded-full
                      bg-white/10 text-white text-xl border border-white/10"
         >
@@ -386,10 +387,8 @@ export function SongStudio() {
               ))}
             </div>
 
-            {/* Lyrics display */}
-            <div
-              className="relative z-10 flex-1 flex flex-col justify-center items-center gap-2 px-2 w-full"
-            >
+            {/* Lyrics display — karaoke style */}
+            <div className="relative z-10 flex-1 flex flex-col justify-center items-center gap-2 px-2 w-full">
               {lyrics.map((line, i) => (
                 <motion.p
                   key={i}
@@ -416,7 +415,10 @@ export function SongStudio() {
               <motion.div
                 className="relative z-10 flex gap-1.5 mb-3"
                 animate={{ opacity: [1, 0.4, 1] }}
-                transition={{ duration: 0.5, repeat: Infinity }}
+                transition={{
+                  duration: (60 / bpmForRhythm) * 2,
+                  repeat: Infinity,
+                }}
               >
                 {[...Array(4)].map((_, i) => (
                   <div key={i} className="w-1.5 h-5 rounded-full bg-kpop-pink opacity-70" />
@@ -477,6 +479,7 @@ export function SongStudio() {
               <motion.button
                 whileTap={{ scale: 0.96 }}
                 onClick={() => {
+                  stopPlayer()
                   setLineIdx(0)
                   setPhase('player')
                 }}
@@ -496,6 +499,7 @@ export function SongStudio() {
                 whileTap={{ scale: 0.96 }}
                 onClick={() => {
                   stopPlayer()
+                  stopSpeaking()
                   setStep(0)
                   setAnswers({})
                   setSong(null)
@@ -514,7 +518,7 @@ export function SongStudio() {
 
               <motion.button
                 whileTap={{ scale: 0.96 }}
-                onClick={() => { stopPlayer(); navigate('/home') }}
+                onClick={() => { stopPlayer(); stopSpeaking(); navigate('/home') }}
                 className="w-full py-3 rounded-2xl font-bold text-white/50 text-base"
                 style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
               >
@@ -526,56 +530,4 @@ export function SongStudio() {
       </AnimatePresence>
     </div>
   )
-}
-
-// ─── Lyric-by-lyric TTS speaker ───────────────────────────────────────────────
-// Speaks one line at a time. On each utterance end, advances the line index.
-// When all lines are done, stops the beat and marks isPlaying=false.
-
-function speakLine(
-  idx: number,
-  song: BuiltSong,
-  language: 'he' | 'en',
-  isHe: boolean,
-  setLineIdx: (n: number) => void,
-  setIsPlaying: (b: boolean) => void,
-  stopBeatRef: React.MutableRefObject<(() => void) | null>
-) {
-  const lyrics = isHe ? song.lyricsHe : song.lyricsEn
-  if (idx >= lyrics.length) {
-    stopBeatRef.current?.()
-    stopBeatRef.current = null
-    setIsPlaying(false)
-    return
-  }
-
-  if (!('speechSynthesis' in window)) {
-    // No TTS — advance automatically with a timer
-    setLineIdx(idx + 1)
-    setTimeout(() => {
-      speakLine(idx + 1, song, language, isHe, setLineIdx, setIsPlaying, stopBeatRef)
-    }, 1200)
-    return
-  }
-
-  window.speechSynthesis.cancel()
-  const utter = new SpeechSynthesisUtterance(lyrics[idx])
-  utter.lang = isHe ? 'he-IL' : 'en-US'
-  utter.rate = 0.8
-  utter.pitch = 1.15
-  utter.volume = 1
-
-  utter.onstart = () => setLineIdx(idx + 1)
-  utter.onend = () => {
-    setTimeout(() => {
-      speakLine(idx + 1, song, language, isHe, setLineIdx, setIsPlaying, stopBeatRef)
-    }, 350)  // brief pause between lines
-  }
-  utter.onerror = () => {
-    setTimeout(() => {
-      speakLine(idx + 1, song, language, isHe, setLineIdx, setIsPlaying, stopBeatRef)
-    }, 800)
-  }
-
-  window.speechSynthesis.speak(utter)
 }

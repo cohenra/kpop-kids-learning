@@ -4,9 +4,17 @@ export type AgeProfile = 3 | 5
 
 // ─── Daily mission per-profile state ──────────────────────────────────────────
 export interface DailyMissionState {
-  missionId: string    // which mission ran that day
   dateKey: string      // 'YYYY-MM-DD' in local TZ — identifies the day
-  bonusGiven: boolean  // true once the 50-spark bonus has been awarded
+  missions: Array<{
+    missionId: string
+    bonusGiven: boolean
+  }>
+}
+
+// ─── Band outfit customization per-profile ─────────────────────────────────────
+export interface BandOutfitColors {
+  hairColor: string
+  outfitColor: string
 }
 
 export interface Profile {
@@ -25,6 +33,8 @@ export interface Profile {
   outfit?: import('../data/outfitItems').ProfileOutfit | null
   // Optional — added in v4; Song Studio — last built song
   builtSong?: import('../data/songStudio').BuiltSong | null
+  // Optional — added in v5; Band member outfit customization
+  bandOutfits?: Record<string, BandOutfitColors> | null
 }
 
 export interface GameProgress {
@@ -56,6 +66,7 @@ let _cache: AppStorage | null = null
 function migrateProfile(raw: Profile): Profile {
   return {
     dailyMission: null,
+    bandOutfits: null,
     ...raw,
   }
 }
@@ -266,6 +277,25 @@ export function saveDailyMission(profileId: 1 | 2, state: DailyMissionState): vo
   const data = loadRoot()
   if (data.profiles[profileId]) {
     data.profiles[profileId]!.dailyMission = state
+    saveRoot(data)
+  }
+}
+
+// ─── Band outfit helpers ───────────────────────────────────────────────────────
+
+export function getBandOutfits(profileId: 1 | 2): Record<string, BandOutfitColors> {
+  return loadRoot().profiles[profileId]?.bandOutfits ?? {}
+}
+
+export function saveBandOutfit(
+  profileId: 1 | 2,
+  memberId: string,
+  colors: BandOutfitColors
+): void {
+  const data = loadRoot()
+  if (data.profiles[profileId]) {
+    const current = data.profiles[profileId]!.bandOutfits ?? {}
+    data.profiles[profileId]!.bandOutfits = { ...current, [memberId]: colors }
     saveRoot(data)
   }
 }

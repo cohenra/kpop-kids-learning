@@ -18,7 +18,7 @@ import {
 
 export function StageView() {
   const navigate = useNavigate()
-  const { activeProfile, language, isRTL, sparks, unlockedStageItems, unlockedBandMembers, profileColors, backArrow } = useApp()
+  const { activeProfile, language, isRTL, sparks, unlockedStageItems, unlockedBandMembers, profileColors, bandOutfits, backArrow } = useApp()
   const { getTotalCompleted } = useProgress()
   const s = t(language)
 
@@ -275,7 +275,12 @@ export function StageView() {
                       y: isConcert ? { duration: 0.65, repeat: Infinity, delay: i * 0.1, ease: 'easeInOut' } : {},
                     }}
                   >
-                    <Character mood={mood} size={memberSize} hairColor={m.hairColor} outfitColor={m.outfitColor} />
+                    <Character
+                      mood={mood}
+                      size={memberSize}
+                      hairColor={bandOutfits[m.id]?.hairColor ?? m.hairColor}
+                      outfitColor={bandOutfits[m.id]?.outfitColor ?? m.outfitColor}
+                    />
                   </motion.div>
                 ))}
 
@@ -308,7 +313,12 @@ export function StageView() {
                       y: isConcert ? { duration: 0.65, repeat: Infinity, delay: (i + 0.4) * 0.1, ease: 'easeInOut' } : {},
                     }}
                   >
-                    <Character mood={mood} size={memberSize} hairColor={m.hairColor} outfitColor={m.outfitColor} />
+                    <Character
+                      mood={mood}
+                      size={memberSize}
+                      hairColor={bandOutfits[m.id]?.hairColor ?? m.hairColor}
+                      outfitColor={bandOutfits[m.id]?.outfitColor ?? m.outfitColor}
+                    />
                   </motion.div>
                 ))}
               </div>
@@ -559,13 +569,13 @@ export function StageView() {
                 >
                   {isUnlocked ? (
                     <>
-                      {/* Unlocked: full color character */}
+                      {/* Unlocked: full color character (uses bandOutfit override if set) */}
                       <div className="relative">
                         <Character
                           mood="happy"
                           size={64}
-                          hairColor={member.hairColor}
-                          outfitColor={member.outfitColor}
+                          hairColor={bandOutfits[member.id]?.hairColor ?? member.hairColor}
+                          outfitColor={bandOutfits[member.id]?.outfitColor ?? member.outfitColor}
                         />
                         <motion.span
                           className="absolute -top-1 -end-1 text-base"

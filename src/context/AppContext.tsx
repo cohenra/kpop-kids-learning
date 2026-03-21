@@ -6,7 +6,7 @@ import {
   useEffect,
   type ReactNode,
 } from 'react'
-import type { Profile, AgeProfile } from '../utils/storage'
+import type { Profile, AgeProfile, BandOutfitColors } from '../utils/storage'
 import {
   getProfile,
   getActiveProfileId,
@@ -19,6 +19,8 @@ import {
   getGameProgress,
   getProfileOutfit,
   saveProfileOutfit,
+  getBandOutfits,
+  saveBandOutfit,
 } from '../utils/storage'
 import { checkAllUnlocks } from '../data/rewards'
 import { defaultOutfit, type ProfileOutfit } from '../data/outfitItems'
@@ -69,6 +71,10 @@ interface AppContextValue {
   outfit: ProfileOutfit
   updateOutfit: (patch: Partial<ProfileOutfit>) => void
 
+  // Band outfit customisation
+  bandOutfits: Record<string, BandOutfitColors>
+  updateBandOutfit: (memberId: string, patch: Partial<BandOutfitColors>) => void
+
   // Derived — avoids repeating in every component
   profileColors: ProfileColors
   backArrow: string
@@ -106,6 +112,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => getProfileOutfit(getActiveProfileId()) ?? defaultOutfit(getActiveProfileId())
   )
 
+  // Band outfit customisation
+  const [bandOutfits, setBandOutfitsState] = useState<Record<string, BandOutfitColors>>(
+    () => getBandOutfits(getActiveProfileId())
+  )
+
   // Sync RTL with language
   const isRTL = language === 'he'
 
@@ -124,6 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUnlockedBandMembers(profile.unlockedBandMembers)
       setLanguageState(profile.language)
       setOutfitState(getProfileOutfit(activeProfileId) ?? defaultOutfit(activeProfileId))
+      setBandOutfitsState(getBandOutfits(activeProfileId))
     }
   }, [activeProfileId])
 
@@ -138,6 +150,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUnlockedBandMembers(profile.unlockedBandMembers)
       setLanguageState(profile.language)
       setOutfitState(getProfileOutfit(id) ?? defaultOutfit(id))
+      setBandOutfitsState(getBandOutfits(id))
     }
   }, [])
 
@@ -198,6 +211,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [outfit, activeProfileId]
   )
 
+  const updateBandOutfit = useCallback(
+    (memberId: string, patch: Partial<BandOutfitColors>) => {
+      const current = bandOutfits[memberId] ?? {}
+      const updated: BandOutfitColors = { ...current, ...patch } as BandOutfitColors
+      const newBandOutfits = { ...bandOutfits, [memberId]: updated }
+      setBandOutfitsState(newBandOutfits)
+      saveBandOutfit(activeProfileId, memberId, updated)
+    },
+    [bandOutfits, activeProfileId]
+  )
+
   const age: AgeProfile = activeProfile?.age ?? 5
 
   // profileColors now reflects the player's chosen outfit customisation
@@ -228,6 +252,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         age,
         outfit,
         updateOutfit,
+        bandOutfits,
+        updateBandOutfit,
         profileColors,
         backArrow,
       }}

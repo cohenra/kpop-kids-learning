@@ -9,16 +9,18 @@ import {
   ACCESSORIES,
   type HairAccessory,
 } from '../data/outfitItems'
+import { BAND_MEMBERS } from '../data/rewards'
 
 // ─── OutfitStudio ─────────────────────────────────────────────────────────────
 //
-// Three tabs: Hair Color | Outfit Color | Accessory
+// Four tabs: Hair Color | Outfit Color | Accessory | Band 👯
 //
 // Tapping an unlocked option → instant live preview + auto-save via updateOutfit.
 // Tapping a locked option    → brief "need X ✨" flash toast.
 // Character preview pulses/bounces whenever a selection is made.
+// Band tab: tap a member → select them → pick hair/outfit colors for them.
 
-type Tab = 'hair' | 'outfit' | 'accessory'
+type Tab = 'hair' | 'outfit' | 'accessory' | 'band'
 
 interface LockedToast {
   visible: boolean
@@ -27,13 +29,15 @@ interface LockedToast {
 
 export function OutfitStudio() {
   const navigate  = useNavigate()
-  const { language, sparks, outfit, updateOutfit, backArrow } = useApp()
+  const { language, sparks, outfit, updateOutfit, bandOutfits, updateBandOutfit, unlockedBandMembers, backArrow } = useApp()
   const isHe = language === 'he'
 
   const [activeTab, setActiveTab] = useState<Tab>('hair')
   const [lockedToast, setLockedToast] = useState<LockedToast>({ visible: false, cost: 0 })
   // Bump key to trigger character bounce animation on each selection
   const [bounceKey, setBounceKey] = useState(0)
+  // Selected band member for Band tab
+  const [selectedBandMemberId, setSelectedBandMemberId] = useState<string | null>(null)
 
   // ── Selection handlers ──────────────────────────────────────────────────────
   const trySelect = (cost: number, onSelect: () => void) => {
@@ -50,6 +54,7 @@ export function OutfitStudio() {
     { id: 'hair',      labelHe: 'שיער',    labelEn: 'Hair',    emoji: '💇' },
     { id: 'outfit',    labelHe: 'תלבושת',  labelEn: 'Outfit',  emoji: '👗' },
     { id: 'accessory', labelHe: 'אקססורי', labelEn: 'Accessory', emoji: '✨' },
+    { id: 'band',      labelHe: 'להקה',    labelEn: 'Band',    emoji: '👯' },
   ]
 
   return (
@@ -222,6 +227,161 @@ export function OutfitStudio() {
                   />
                 )
               })}
+            </motion.div>
+          )}
+
+          {activeTab === 'band' && (
+            <motion.div
+              key="band"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="flex flex-col gap-4"
+            >
+              {/* Member picker */}
+              <div className="grid grid-cols-3 gap-2">
+                {BAND_MEMBERS.map((member) => {
+                  const isUnlocked = unlockedBandMembers.includes(member.id)
+                  const isSelected = selectedBandMemberId === member.id
+                  const memberHair = bandOutfits[member.id]?.hairColor ?? member.hairColor
+                  const memberOutfit = bandOutfits[member.id]?.outfitColor ?? member.outfitColor
+                  return (
+                    <motion.button
+                      key={member.id}
+                      whileTap={isUnlocked ? { scale: 0.93 } : undefined}
+                      onClick={() => isUnlocked && setSelectedBandMemberId(member.id)}
+                      className="flex flex-col items-center gap-1 p-2 rounded-2xl border transition-all"
+                      style={{
+                        background: isSelected
+                          ? `${memberHair}22`
+                          : 'rgba(45,42,74,0.6)',
+                        borderColor: isSelected ? memberHair : 'rgba(255,255,255,0.08)',
+                        boxShadow: isSelected ? `0 0 14px ${memberHair}55` : 'none',
+                        opacity: isUnlocked ? 1 : 0.4,
+                      }}
+                    >
+                      <div
+                        style={{
+                          filter: isUnlocked ? 'none' : 'grayscale(1) brightness(0.4)',
+                        }}
+                      >
+                        <Character
+                          mood={isSelected ? 'excited' : 'happy'}
+                          size={70}
+                          hairColor={memberHair}
+                          outfitColor={memberOutfit}
+                        />
+                      </div>
+                      <span
+                        className="text-xs font-bold text-center leading-tight"
+                        style={{
+                          fontFamily: 'Fredoka One, Nunito, sans-serif',
+                          color: isUnlocked ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.25)',
+                        }}
+                      >
+                        {isUnlocked
+                          ? (isHe ? member.nameHe : member.nameEn)
+                          : (isHe ? 'עוד לא' : 'Locked')}
+                      </span>
+                    </motion.button>
+                  )
+                })}
+              </div>
+
+              {/* Color pickers for selected member */}
+              {selectedBandMemberId && (() => {
+                const selectedMember = BAND_MEMBERS.find((m) => m.id === selectedBandMemberId)
+                if (!selectedMember) return null
+                const currentHair   = bandOutfits[selectedBandMemberId]?.hairColor ?? selectedMember.hairColor
+                const currentOutfit = bandOutfits[selectedBandMemberId]?.outfitColor ?? selectedMember.outfitColor
+                return (
+                  <div className="flex flex-col gap-4">
+                    {/* Hair color */}
+                    <div>
+                      <p
+                        className="text-white/50 text-xs mb-2 font-bold uppercase tracking-wide"
+                        style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
+                      >
+                        {isHe ? '💇 צבע שיער' : '💇 Hair Color'}
+                      </p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {HAIR_COLORS.map((opt) => (
+                          <motion.button
+                            key={opt.id}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => {
+                              updateBandOutfit(selectedBandMemberId, { hairColor: opt.color })
+                              setBounceKey((k) => k + 1)
+                            }}
+                            className="flex flex-col items-center gap-1.5 p-2 rounded-xl border"
+                            style={{
+                              background: currentHair === opt.color ? `${opt.color}22` : 'rgba(45,42,74,0.6)',
+                              borderColor: currentHair === opt.color ? opt.color : 'rgba(255,255,255,0.08)',
+                              boxShadow: currentHair === opt.color ? `0 0 10px ${opt.color}66` : 'none',
+                            }}
+                          >
+                            <div
+                              className="w-9 h-9 rounded-full"
+                              style={{ background: opt.color }}
+                            />
+                            {currentHair === opt.color && (
+                              <span className="text-white text-xs font-bold">✓</span>
+                            )}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Outfit color */}
+                    <div>
+                      <p
+                        className="text-white/50 text-xs mb-2 font-bold uppercase tracking-wide"
+                        style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
+                      >
+                        {isHe ? '👗 צבע תלבושת' : '👗 Outfit Color'}
+                      </p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {OUTFIT_COLORS.map((opt) => (
+                          <motion.button
+                            key={opt.id}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => {
+                              updateBandOutfit(selectedBandMemberId, { outfitColor: opt.color })
+                              setBounceKey((k) => k + 1)
+                            }}
+                            className="flex flex-col items-center gap-1.5 p-2 rounded-xl border"
+                            style={{
+                              background: currentOutfit === opt.color ? `${opt.color}22` : 'rgba(45,42,74,0.6)',
+                              borderColor: currentOutfit === opt.color ? opt.color : 'rgba(255,255,255,0.08)',
+                              boxShadow: currentOutfit === opt.color ? `0 0 10px ${opt.color}66` : 'none',
+                            }}
+                          >
+                            <div
+                              className="w-9 h-9 rounded-full"
+                              style={{ background: opt.color }}
+                            />
+                            {currentOutfit === opt.color && (
+                              <span className="text-white text-xs font-bold">✓</span>
+                            )}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Prompt to select if none selected */}
+              {!selectedBandMemberId && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center text-white/40 text-sm mt-4"
+                  style={{ fontFamily: 'Nunito, Heebo, sans-serif' }}
+                >
+                  {isHe ? '👆 בחרי חברת להקה כדי לשנות את המראה שלה' : '👆 Tap a member to customize their look'}
+                </motion.p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
