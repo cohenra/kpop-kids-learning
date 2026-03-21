@@ -266,44 +266,73 @@ export function Home() {
       {/* ── Daily Mission Banner ───────────────────────────────────────────── */}
       <DailyMissionBanner missionData={missionData} />
 
-      {/* ── Song Studio teaser — show once band has at least 1 member ─────── */}
-      {unlockedBandMembers.length > 0 && (
+      {/* ── Special activities: Song Studio + Drawing Room ────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.42 }}
+        className="flex gap-2 mx-4 mb-3"
+      >
+        {/* Song Studio — locked until first band member */}
+        {unlockedBandMembers.length > 0 ? (
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/song')}
+            className="flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-2xl border"
+            style={{
+              background: 'linear-gradient(135deg, rgba(6,182,212,0.16) 0%, rgba(45,42,74,0.9) 100%)',
+              borderColor: 'rgba(6,182,212,0.28)',
+              boxShadow: '0 0 12px rgba(6,182,212,0.1)',
+            }}
+          >
+            <motion.span
+              className="text-2xl"
+              animate={{ scale: [1, 1.18, 1], rotate: [0, -10, 10, 0] }}
+              transition={{ duration: 2.8, repeat: Infinity }}
+            >🎵</motion.span>
+            <span
+              className="text-kpop-cyan font-bold text-xs text-center"
+              style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
+            >
+              {isHe ? 'שיר הלהקה' : 'Band Song'}
+            </span>
+          </motion.button>
+        ) : (
+          <div
+            className="flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-2xl border opacity-35"
+            style={{ background: 'rgba(45,42,74,0.5)', borderColor: 'rgba(255,255,255,0.07)' }}
+          >
+            <span className="text-2xl" style={{ filter: 'grayscale(1)' }}>🎵</span>
+            <span className="text-white/35 text-xs text-center" style={{ fontFamily: 'Nunito, Heebo, sans-serif' }}>
+              {isHe ? '🔒 שיר הלהקה' : '🔒 Band Song'}
+            </span>
+          </div>
+        )}
+
+        {/* Drawing Room — always unlocked */}
         <motion.button
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          whileTap={{ scale: 0.96 }}
-          onClick={() => navigate('/song')}
-          className="mx-4 mb-3 rounded-2xl overflow-hidden flex items-center gap-3 px-4 py-3"
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('/draw')}
+          className="flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-2xl border"
           style={{
-            background: 'linear-gradient(135deg, rgba(6,182,212,0.18) 0%, rgba(45,42,74,0.95) 100%)',
-            border: '1.5px solid rgba(6,182,212,0.3)',
-            boxShadow: '0 0 14px rgba(6,182,212,0.12)',
+            background: 'linear-gradient(135deg, rgba(236,72,153,0.16) 0%, rgba(45,42,74,0.9) 100%)',
+            borderColor: 'rgba(236,72,153,0.28)',
+            boxShadow: '0 0 12px rgba(236,72,153,0.1)',
           }}
         >
           <motion.span
-            className="text-3xl flex-shrink-0"
-            animate={{ scale: [1, 1.15, 1], rotate: [0, -8, 8, 0] }}
-            transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
+            className="text-2xl"
+            animate={{ rotate: [0, -15, 15, 0] }}
+            transition={{ duration: 3, repeat: Infinity, delay: 0.8 }}
+          >🎨</motion.span>
+          <span
+            className="text-kpop-pink font-bold text-xs text-center"
+            style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
           >
-            🎵
-          </motion.span>
-          <div className="flex-1 text-start">
-            <div
-              className="text-kpop-cyan font-bold text-sm"
-              style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
-            >
-              {isHe ? 'צרי שיר עם הלהקה שלך!' : 'Build a song with your band!'}
-            </div>
-            <div className="text-white/40 text-xs mt-0.5">
-              {isHe ? 'בחרי מילים ומנגינה — הן ישירו בשבילך' : 'Choose words & melody — they\'ll sing for you'}
-            </div>
-          </div>
-          <span className="text-white/30 text-lg flex-shrink-0">
-            {isHe ? '←' : '→'}
+            {isHe ? 'חדר הציור' : 'Drawing Room'}
           </span>
         </motion.button>
-      )}
+      </motion.div>
 
       {/* ── Room grid ─────────────────────────────────────────────────────── */}
       <div className="relative z-10 flex-1 overflow-y-auto scrollable px-4 pb-2">

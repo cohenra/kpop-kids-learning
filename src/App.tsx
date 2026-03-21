@@ -8,6 +8,7 @@ import { GameRoom } from './pages/GameRoom'
 import { ParentMode } from './pages/ParentMode'
 import { OutfitStudio } from './pages/OutfitStudio'
 import { SongStudio } from './pages/SongStudio'
+import { DrawingRoom } from './pages/DrawingRoom'
 import { BandmateCelebrationLayer } from './components/UI/BandmateCelebration'
 import { hasAnyProfile } from './utils/storage'
 
@@ -33,6 +34,7 @@ function AppShell() {
         <Route path="/parent" element={<ParentMode />} />
         <Route path="/outfit" element={<OutfitStudio />} />
         <Route path="/song"   element={<SongStudio />} />
+        <Route path="/draw"   element={<DrawingRoom />} />
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
