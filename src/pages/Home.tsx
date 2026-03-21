@@ -1,49 +1,143 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useApp } from '../context/AppContext'
 import { Character } from '../components/Character/Character'
 import { SparkCounter } from '../components/UI/SparkCounter'
 import { StarParticles } from '../components/UI/StarParticles'
+import { DailyMissionBanner } from '../components/DailyMission/DailyMissionBanner'
 import { t } from '../i18n/strings'
 import { ROOMS } from '../data/games'
+import { BAND_MEMBERS } from '../data/rewards'
+import { speak } from '../utils/tts'
+import { useDailyMission } from '../hooks/useDailyMission'
 import type { RoomId } from '../data/games'
 
 // ─── Home screen ──────────────────────────────────────────────────────────────
 
 const LOGO_HOLD_MS = 3000
 
+// ── Spark rain: floating ✨ particles that burst when sparks increase ──────────
+interface SparkParticle {
+  id: number
+  x: number
+  y: number
+}
+
+let _particleId = 0
+
+function SparkRain({ particles }: { particles: SparkParticle[] }) {
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50">
+      <AnimatePresence>
+        {particles.map((p) => (
+          <motion.div
+            key={p.id}
+            className="absolute text-2xl select-none"
+            style={{ left: p.x, top: p.y }}
+            initial={{ opacity: 1, scale: 0.5, y: 0 }}
+            animate={{ opacity: 0, scale: 1.5, y: -120 + Math.random() * -60 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.2, ease: 'easeOut' }}
+          >
+            ✨
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 export function Home() {
   const navigate = useNavigate()
-  const { activeProfile, language, setLanguage, profileColors } = useApp()
+  const {
+    activeProfile,
+    activeProfileId,
+    language,
+    setLanguage,
+    profileColors,
+    sparks,
+    unlockedBandMembers,
+    outfit,
+  } = useApp()
   const s = t(language)
+  const isHe = language === 'he'
 
-  const logoHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [logoHolding, setLogoHolding] = useState(false)
-  const [logoProgress, setLogoProgress] = useState(0)
+  // Daily mission
+  const missionData = useDailyMission()
+
+  // Logo hold for Parent Mode
+  const logoHoldTimer  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [logoHolding, setLogoHolding]   = useState(false)
+  const [logoProgress, setLogoProgress] = useState(0)
 
-  // If no profile, redirect to welcome (in effect — not during render)
+  // Spark rain
+  const [sparkParticles, setSparkParticles] = useState<SparkParticle[]>([])
+  const prevSparksRef = useRef(sparks)
+
+  // Daily greeting (fires once per new day, on mount)
+  const greetingFiredRef = useRef(false)
+
+  // ── Guard: redirect to welcome if no profile ──────────────────────────────
   useEffect(() => {
     if (!activeProfile) navigate('/')
   }, [activeProfile, navigate])
 
-  const handleRoomTap = (room: { id: RoomId; available: boolean }) => {
+  // ── Daily greeting TTS ─────────────────────────────────────────────────────
+  // Fires once per session when isNewDay is true.
+  useEffect(() => {
+    if (!activeProfile || greetingFiredRef.current) return
+    if (!missionData.isNewDay) return
+    greetingFiredRef.current = true
+
+    // Small delay so the screen has time to render before speaking
+    const t = setTimeout(() => {
+      const name = activeProfile.characterName
+      const text = isHe
+        ? `היי ${name}! ${missionData.mission.ttsHe}`
+        : `Hey ${name}! ${missionData.mission.ttsEn}`
+      speak(text, language)
+    }, 800)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProfile?.id, missionData.isNewDay])
+
+  // ── Spark rain: burst ✨ when sparks increase (e.g., returning from a game) ─
+  useEffect(() => {
+    if (sparks > prevSparksRef.current) {
+      const gained = sparks - prevSparksRef.current
+      const count  = Math.min(Math.ceil(gained / 5), 18) // cap at 18 particles
+      const newParticles: SparkParticle[] = Array.from({ length: count }, () => ({
+        id: ++_particleId,
+        x: 60 + Math.random() * (window.innerWidth - 120),
+        y: 80 + Math.random() * (window.innerHeight * 0.4),
+      }))
+      setSparkParticles((prev) => [...prev, ...newParticles])
+      // Auto-clean after animation completes
+      setTimeout(() => {
+        setSparkParticles((prev) =>
+          prev.filter((p) => !newParticles.find((n) => n.id === p.id))
+        )
+      }, 1600)
+    }
+    prevSparksRef.current = sparks
+  }, [sparks])
+
+  // ── Room navigation ────────────────────────────────────────────────────────
+  const handleRoomTap = useCallback((room: { id: RoomId; available: boolean }) => {
     if (!room.available) return
     navigate(`/room/${room.id}`)
-  }
+  }, [navigate])
 
-  // Logo hold for Parent Mode
+  // ── Logo hold ──────────────────────────────────────────────────────────────
   const startLogoHold = () => {
     setLogoHolding(true)
     setLogoProgress(0)
-
     const start = Date.now()
     progressInterval.current = setInterval(() => {
-      const elapsed = Date.now() - start
-      setLogoProgress(Math.min(100, (elapsed / LOGO_HOLD_MS) * 100))
+      setLogoProgress(Math.min(100, ((Date.now() - start) / LOGO_HOLD_MS) * 100))
     }, 50)
-
     logoHoldTimer.current = setTimeout(() => {
       clearInterval(progressInterval.current!)
       setLogoHolding(false)
@@ -53,11 +147,16 @@ export function Home() {
   }
 
   const cancelLogoHold = () => {
-    if (logoHoldTimer.current) clearTimeout(logoHoldTimer.current)
+    if (logoHoldTimer.current)  clearTimeout(logoHoldTimer.current)
     if (progressInterval.current) clearInterval(progressInterval.current)
     setLogoHolding(false)
     setLogoProgress(0)
   }
+
+  // ── Next locked member teaser ──────────────────────────────────────────────
+  const nextLockedMember = BAND_MEMBERS.find(
+    (m) => !unlockedBandMembers.includes(m.id)
+  )
 
   if (!activeProfile) return null
 
@@ -67,8 +166,9 @@ export function Home() {
       style={{ background: 'linear-gradient(180deg, #1E1B2E 0%, #16142A 100%)' }}
     >
       <StarParticles />
+      <SparkRain particles={sparkParticles} />
 
-      {/* ── Top bar ────────────────────────────────────────────────────── */}
+      {/* ── Top bar ──────────────────────────────────────────────────────── */}
       <div className="relative z-10 flex items-center justify-between px-4 pt-3 pb-2 safe-top">
         {/* Logo (hold for parent mode) */}
         <div className="relative">
@@ -82,12 +182,8 @@ export function Home() {
             whileTap={{ scale: 0.9 }}
           >
             🌟
-            {/* Progress ring */}
             {logoHolding && (
-              <svg
-                className="absolute inset-0 w-full h-full -rotate-90"
-                viewBox="0 0 48 48"
-              >
+              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 48 48">
                 <circle
                   cx="24" cy="24" r="21"
                   fill="none"
@@ -107,18 +203,14 @@ export function Home() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <span className="text-white/50 text-base">
-            {s.homeGreeting}
-          </span>
+          <span className="text-white/50 text-base">{s.homeGreeting}</span>
           <span
             className="text-white font-bold text-lg"
             style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
           >
             {activeProfile.characterName}
           </span>
-          <span className="text-xl">
-            {activeProfile.id === 1 ? '👑' : '✨'}
-          </span>
+          <span className="text-xl">{activeProfileId === 1 ? '👑' : '✨'}</span>
         </motion.div>
 
         {/* Spark counter + lang toggle */}
@@ -136,23 +228,45 @@ export function Home() {
         </div>
       </div>
 
-      {/* ── Character + greeting ────────────────────────────────────────── */}
+      {/* ── Character (tap to open Outfit Studio) ────────────────────── */}
       <div className="relative z-10 flex flex-col items-center pt-1 pb-0 px-4">
-        <motion.div
+        <motion.button
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('/outfit')}
+          className="relative"
+          aria-label={isHe ? 'סטודיו לבוש' : 'Outfit Studio'}
         >
           <Character
             mood="idle"
-            size={130}
+            size={120}
             hairColor={profileColors.hair}
             outfitColor={profileColors.outfit}
+            ribbonColor={profileColors.hair}
+            hairAccessory={outfit.hairAccessory}
           />
-        </motion.div>
+          {/* Customize badge */}
+          <motion.div
+            className="absolute bottom-4 end-0 w-8 h-8 rounded-full
+                       flex items-center justify-center text-base shadow-lg"
+            style={{
+              background: 'linear-gradient(135deg, #7C3AED, #EC4899)',
+              boxShadow: '0 0 10px rgba(124,58,237,0.5)',
+            }}
+            animate={{ scale: [1, 1.12, 1] }}
+            transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+          >
+            🎨
+          </motion.div>
+        </motion.button>
       </div>
 
-      {/* ── Room grid ──────────────────────────────────────────────────── */}
+      {/* ── Daily Mission Banner ───────────────────────────────────────────── */}
+      <DailyMissionBanner missionData={missionData} />
+
+      {/* ── Room grid ─────────────────────────────────────────────────────── */}
       <div className="relative z-10 flex-1 overflow-y-auto scrollable px-4 pb-2">
         <div className="grid grid-cols-2 gap-3 pb-2">
           {ROOMS.map((room, i) => {
@@ -170,7 +284,7 @@ export function Home() {
                 onClick={() => handleRoomTap(room)}
                 className={[
                   'relative rounded-3xl p-4 text-start overflow-hidden',
-                  'min-h-[120px] border border-white/10',
+                  'min-h-[110px] border border-white/10',
                   'flex flex-col justify-between',
                   isLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer',
                 ].join(' ')}
@@ -193,10 +307,8 @@ export function Home() {
                   />
                 )}
 
-                {/* Emoji icon */}
                 <span className="text-4xl leading-none">{room.emoji}</span>
 
-                {/* Room name */}
                 <div>
                   <h3
                     className="font-bold text-white leading-tight text-base"
@@ -216,12 +328,9 @@ export function Home() {
                   )}
                 </div>
 
-                {/* Lock badge */}
                 {isLocked && (
                   <div className="absolute top-2 end-2 text-white/30 text-lg">🔒</div>
                 )}
-
-                {/* Available badge */}
                 {!isLocked && (
                   <motion.div
                     className="absolute top-2 end-2 w-2.5 h-2.5 rounded-full"
@@ -236,16 +345,63 @@ export function Home() {
         </div>
       </div>
 
-      {/* ── Bottom: My Stage button ─────────────────────────────────────── */}
-      <div className="relative z-10 px-4 pb-4 safe-bottom">
+      {/* ── Bottom ────────────────────────────────────────────────────────── */}
+      <div className="relative z-10 px-4 pb-4 safe-bottom flex flex-col gap-2">
+        {/* Next-member teaser — shown when there are locked members still */}
+        {nextLockedMember && (
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => navigate('/stage')}
+            className="w-full rounded-xl py-2.5 px-4 flex items-center gap-3
+                       border border-white/10"
+            style={{ background: 'rgba(45,42,74,0.7)' }}
+          >
+            {/* Silhouette avatar */}
+            <motion.div
+              animate={{ scale: [1, 1.06, 1] }}
+              transition={{ duration: 2.2, repeat: Infinity }}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-xl flex-shrink-0"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                filter: 'grayscale(1) brightness(0.35)',
+                border: '1.5px solid rgba(255,255,255,0.12)',
+              }}
+            >
+              {nextLockedMember.emoji}
+            </motion.div>
+
+            <div className="flex-1 text-start">
+              <div
+                className="text-white/50 text-xs font-bold uppercase tracking-wide"
+                style={{ fontFamily: 'Fredoka One, Nunito, sans-serif' }}
+              >
+                {isHe ? '🔒 חברת הלהקה הבאה' : '🔒 Next Band Member'}
+              </div>
+              <div className="text-white/30 text-[11px] mt-0.5">
+                {isHe
+                  ? `המשיכי לשחק כדי לגלות מי היא!`
+                  : 'Keep playing to reveal who she is!'}
+              </div>
+            </div>
+
+            <div className="text-white/25 text-lg flex-shrink-0">
+              {isHe ? '←' : '→'}
+            </div>
+          </motion.button>
+        )}
+
+        {/* My Stage button */}
         <motion.button
-          className="w-full rounded-2xl py-4 font-bold text-white text-xl
+          className="w-full rounded-2xl py-3.5 font-bold text-white text-xl
                      flex items-center justify-center gap-2 border border-kpop-gold/30"
           style={{
             background: 'linear-gradient(135deg, rgba(245,158,11,0.25) 0%, rgba(236,72,153,0.25) 100%)',
             boxShadow: '0 0 20px rgba(245,158,11,0.2)',
             fontFamily: 'Fredoka One, Nunito, sans-serif',
-            minHeight: 64,
+            minHeight: 60,
           }}
           whileTap={{ scale: 0.97 }}
           whileHover={{ scale: 1.02 }}

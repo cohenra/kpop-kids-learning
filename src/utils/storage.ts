@@ -2,6 +2,13 @@
 
 export type AgeProfile = 3 | 5
 
+// ─── Daily mission per-profile state ──────────────────────────────────────────
+export interface DailyMissionState {
+  missionId: string    // which mission ran that day
+  dateKey: string      // 'YYYY-MM-DD' in local TZ — identifies the day
+  bonusGiven: boolean  // true once the 50-spark bonus has been awarded
+}
+
 export interface Profile {
   id: 1 | 2
   characterName: string
@@ -12,6 +19,10 @@ export interface Profile {
   unlockedBandMembers: string[]
   createdAt: number
   lastPlayed: number
+  // Optional — added in v2; migrated on load for existing profiles
+  dailyMission?: DailyMissionState | null
+  // Optional — added in v3; Outfit Studio customisation
+  outfit?: import('../data/outfitItems').ProfileOutfit | null
 }
 
 export interface GameProgress {
@@ -37,11 +48,29 @@ const STORAGE_KEY = 'star-academy'
 // Every write goes through saveRoot which updates the cache atomically.
 let _cache: AppStorage | null = null
 
+// ─── Profile migration ─────────────────────────────────────────────────────────
+// Spread defaults BEFORE the raw object so existing fields always win.
+// Add new optional Profile fields here with their default values.
+function migrateProfile(raw: Profile): Profile {
+  return {
+    dailyMission: null,
+    ...raw,
+  }
+}
+
 function loadRoot(): AppStorage {
   if (_cache) return _cache
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    _cache = raw ? (JSON.parse(raw) as AppStorage) : createDefaultStorage()
+    if (raw) {
+      const parsed = JSON.parse(raw) as AppStorage
+      // Migrate each profile that exists
+      if (parsed.profiles[1]) parsed.profiles[1] = migrateProfile(parsed.profiles[1])
+      if (parsed.profiles[2]) parsed.profiles[2] = migrateProfile(parsed.profiles[2])
+      _cache = parsed
+    } else {
+      _cache = createDefaultStorage()
+    }
   } catch {
     _cache = createDefaultStorage()
   }
@@ -50,7 +79,15 @@ function loadRoot(): AppStorage {
 
 function saveRoot(data: AppStorage): void {
   _cache = data
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch (e) {
+    // QuotaExceededError — localStorage is full. In-memory cache still works
+    // for the session, but warn so the parent can investigate in DevTools.
+    if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+      console.warn('[storage] QuotaExceededError — localStorage is full. Progress may not persist.')
+    }
+  }
 }
 
 function createDefaultStorage(): AppStorage {
@@ -177,6 +214,39 @@ export function setRoomLock(roomId: string, locked: boolean): void {
   const data = loadRoot()
   data.roomLocks[roomId] = locked
   saveRoot(data)
+}
+
+// ─── Outfit helpers ────────────────────────────────────────────────────────────
+
+export function getProfileOutfit(
+  profileId: 1 | 2
+): import('../data/outfitItems').ProfileOutfit | null {
+  return loadRoot().profiles[profileId]?.outfit ?? null
+}
+
+export function saveProfileOutfit(
+  profileId: 1 | 2,
+  outfit: import('../data/outfitItems').ProfileOutfit
+): void {
+  const data = loadRoot()
+  if (data.profiles[profileId]) {
+    data.profiles[profileId]!.outfit = outfit
+    saveRoot(data)
+  }
+}
+
+// ─── Daily mission helpers ─────────────────────────────────────────────────────
+
+export function getDailyMission(profileId: 1 | 2): DailyMissionState | null {
+  return loadRoot().profiles[profileId]?.dailyMission ?? null
+}
+
+export function saveDailyMission(profileId: 1 | 2, state: DailyMissionState): void {
+  const data = loadRoot()
+  if (data.profiles[profileId]) {
+    data.profiles[profileId]!.dailyMission = state
+    saveRoot(data)
+  }
 }
 
 // ─── Full reset ────────────────────────────────────────────────────────────────

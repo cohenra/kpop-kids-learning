@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import type { HairAccessory } from '../../data/outfitItems'
 
 // ─── Anime-style K-POP character SVG with detailed emotion states ─────────────
 
@@ -10,6 +11,8 @@ interface CharacterProps {
   size?: number
   hairColor?: string
   outfitColor?: string
+  ribbonColor?: string
+  hairAccessory?: HairAccessory
   showName?: boolean
 }
 
@@ -19,6 +22,8 @@ export function Character({
   size = 160,
   hairColor = '#EC4899',
   outfitColor = '#7C3AED',
+  ribbonColor = '#F59E0B',
+  hairAccessory = 'star',
   showName = false,
 }: CharacterProps) {
   const isExcited = mood === 'excited'
@@ -105,8 +110,8 @@ export function Character({
             fill={`url(#hair-${hairColor.replace('#','')})`}
           />
           {/* Ponytail ribbons */}
-          <ellipse cx="15" cy="78" rx="4" ry="6" fill="#F59E0B" transform="rotate(-15 15 78)" />
-          <ellipse cx="85" cy="78" rx="4" ry="6" fill="#F59E0B" transform="rotate(15 85 78)" />
+          <ellipse cx="15" cy="78" rx="4" ry="6" fill={ribbonColor} transform="rotate(-15 15 78)" />
+          <ellipse cx="85" cy="78" rx="4" ry="6" fill={ribbonColor} transform="rotate(15 85 78)" />
 
           {/* ═══════════ BODY ═══════════ */}
           {/* Jacket */}
@@ -387,8 +392,50 @@ export function Character({
             strokeLinecap="round"
             opacity="0.45"
           />
-          {/* Star hair clip */}
-          <text x="67" y="22" fontSize="7" fill="#F59E0B">★</text>
+          {/* ═══════════ HAIR ACCESSORY ═══════════ */}
+          {hairAccessory === 'star' && (
+            <text x="67" y="22" fontSize="7" fill="#F59E0B">★</text>
+          )}
+          {hairAccessory === 'bow' && (
+            <g>
+              {/* Left wing */}
+              <path d="M 50 9 Q 43 4 38 9 Q 43 14 50 11Z" fill={ribbonColor} />
+              {/* Right wing */}
+              <path d="M 50 9 Q 57 4 62 9 Q 57 14 50 11Z" fill={ribbonColor} />
+              {/* Center knot */}
+              <ellipse cx="50" cy="10" rx="3" ry="2.2" fill={ribbonColor} />
+              <ellipse cx="50" cy="10" rx="1.5" ry="1.1" fill="white" opacity="0.35" />
+            </g>
+          )}
+          {hairAccessory === 'tiara' && (
+            <g>
+              {/* Band */}
+              <path d="M 33 25 Q 41 19 50 17 Q 59 19 67 25"
+                stroke="#F59E0B" strokeWidth="2" fill="none" strokeLinecap="round" />
+              {/* Center gem */}
+              <circle cx="50" cy="17" r="3.2" fill="#EC4899" />
+              <circle cx="50" cy="17" r="1.6" fill="white" opacity="0.45" />
+              {/* Side gems */}
+              <circle cx="41" cy="21" r="2" fill="#06B6D4" />
+              <circle cx="59" cy="21" r="2" fill="#7C3AED" />
+            </g>
+          )}
+          {hairAccessory === 'crown' && (
+            <g>
+              {/* Crown body */}
+              <path d="M 34 14 L 37 6 L 44 12 L 50 4 L 56 12 L 63 6 L 66 14 Q 50 11 34 14Z"
+                fill="#F59E0B" />
+              {/* Crown base band */}
+              <path d="M 34 14 Q 50 17 66 14" stroke="#F59E0B" strokeWidth="2.5"
+                fill="none" strokeLinecap="round" />
+              {/* Gems on points */}
+              <circle cx="50" cy="5"  r="2.5" fill="#EC4899" />
+              <circle cx="37" cy="7"  r="1.8" fill="#06B6D4" />
+              <circle cx="63" cy="7"  r="1.8" fill="#7C3AED" />
+              {/* Gem shine */}
+              <circle cx="50" cy="4"  r="1"   fill="white" opacity="0.6" />
+            </g>
+          )}
         </svg>
 
         {/* Sparkle effects around character for happy/excited moods */}

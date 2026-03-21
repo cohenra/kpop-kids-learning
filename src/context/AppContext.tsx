@@ -17,23 +17,20 @@ import {
   updateProfileBandMembers,
   hasAnyProfile,
   getGameProgress,
+  getProfileOutfit,
+  saveProfileOutfit,
 } from '../utils/storage'
 import { checkAllUnlocks } from '../data/rewards'
+import { defaultOutfit, type ProfileOutfit } from '../data/outfitItems'
 import type { Language } from '../i18n/strings'
 import type { BandMember } from '../data/rewards'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-/** Derived profile avatar colors — computed once here, consumed everywhere. */
+/** Derived profile avatar colors — reflects current outfit customisation. */
 export interface ProfileColors {
   hair: string
   outfit: string
-}
-
-function getProfileColors(id: 1 | 2): ProfileColors {
-  return id === 1
-    ? { hair: '#EC4899', outfit: '#7C3AED' }
-    : { hair: '#06B6D4', outfit: '#EC4899' }
 }
 
 interface AppContextValue {
@@ -68,6 +65,10 @@ interface AppContextValue {
   // Age
   age: AgeProfile
 
+  // Outfit Studio customisation
+  outfit: ProfileOutfit
+  updateOutfit: (patch: Partial<ProfileOutfit>) => void
+
   // Derived — avoids repeating in every component
   profileColors: ProfileColors
   backArrow: string
@@ -100,6 +101,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [newlyUnlockedBandmate, setNewlyUnlockedBandmate] = useState<BandMember | null>(null)
   const [isFirstLaunch] = useState<boolean>(!hasAnyProfile())
 
+  // Outfit customisation — falls back to per-profile defaults if not yet set
+  const [outfit, setOutfitState] = useState<ProfileOutfit>(
+    () => getProfileOutfit(getActiveProfileId()) ?? defaultOutfit(getActiveProfileId())
+  )
+
   // Sync RTL with language
   const isRTL = language === 'he'
 
@@ -117,6 +123,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUnlockedStageItems(profile.unlockedStageItems)
       setUnlockedBandMembers(profile.unlockedBandMembers)
       setLanguageState(profile.language)
+      setOutfitState(getProfileOutfit(activeProfileId) ?? defaultOutfit(activeProfileId))
     }
   }, [activeProfileId])
 
@@ -130,6 +137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUnlockedStageItems(profile.unlockedStageItems)
       setUnlockedBandMembers(profile.unlockedBandMembers)
       setLanguageState(profile.language)
+      setOutfitState(getProfileOutfit(id) ?? defaultOutfit(id))
     }
   }, [])
 
@@ -181,8 +189,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNewlyUnlockedBandmate(null)
   }, [])
 
+  const updateOutfit = useCallback(
+    (patch: Partial<ProfileOutfit>) => {
+      const updated: ProfileOutfit = { ...outfit, ...patch }
+      setOutfitState(updated)
+      saveProfileOutfit(activeProfileId, updated)
+    },
+    [outfit, activeProfileId]
+  )
+
   const age: AgeProfile = activeProfile?.age ?? 5
-  const profileColors = getProfileColors(activeProfileId)
+
+  // profileColors now reflects the player's chosen outfit customisation
+  const profileColors: ProfileColors = {
+    hair:   outfit.hairColor,
+    outfit: outfit.outfitColor,
+  }
+
   const backArrow = isRTL ? '→' : '←'
 
   return (
@@ -203,6 +226,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         reloadProfile,
         isFirstLaunch,
         age,
+        outfit,
+        updateOutfit,
         profileColors,
         backArrow,
       }}
