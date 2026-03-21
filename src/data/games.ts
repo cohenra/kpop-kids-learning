@@ -7,6 +7,7 @@ export type RoomId =
   | 'social'
   | 'nature'
   | 'logic'
+  | 'creative'
 
 export interface Room {
   id: RoomId
@@ -57,6 +58,13 @@ export const ROOMS: Room[] = [
     emoji: '🧩',
     color: '#8B5CF6',
     glowColor: 'rgba(139, 92, 246, 0.4)',
+    available: true,
+  },
+  {
+    id: 'creative',
+    emoji: '🎨',
+    color: '#EC4899',
+    glowColor: 'rgba(236, 72, 153, 0.4)',
     available: true,
   },
 ]

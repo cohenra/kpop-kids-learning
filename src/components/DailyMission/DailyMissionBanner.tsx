@@ -127,7 +127,7 @@ function MissionCard({ mp, isHe, unlockedBandMembers, onPlay, delay }: MissionCa
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, type: 'spring', stiffness: 220 }}
-      className="flex items-center gap-2.5 px-3 py-2 rounded-xl overflow-hidden"
+      className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl overflow-hidden"
       style={{
         background: 'linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(45,42,74,0.9) 100%)',
         border: '1px solid rgba(124,58,237,0.28)',
@@ -162,7 +162,7 @@ function MissionCard({ mp, isHe, unlockedBandMembers, onPlay, delay }: MissionCa
       {/* Text + progress dots */}
       <div className="flex-1 min-w-0">
         <p
-          className="text-white/75 text-[11px] leading-tight line-clamp-1 mb-0.5"
+          className="text-white/75 text-[11px] leading-snug mb-0.5"
           style={{ fontFamily: 'Nunito, Heebo, sans-serif' }}
         >
           {isHe ? mission.textHe : mission.textEn}
@@ -193,7 +193,7 @@ function MissionCard({ mp, isHe, unlockedBandMembers, onPlay, delay }: MissionCa
         whileTap={{ scale: 0.92 }}
         whileHover={{ scale: 1.05 }}
         onClick={onPlay}
-        className="flex-shrink-0 px-3 py-1.5 rounded-lg font-bold text-white text-xs"
+        className="flex-shrink-0 px-3 py-1.5 rounded-lg font-bold text-white text-xs mt-0.5"
         style={{
           background: 'linear-gradient(135deg, #7C3AED, #EC4899)',
           boxShadow: '0 0 10px rgba(124,58,237,0.35)',

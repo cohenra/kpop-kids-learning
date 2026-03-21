@@ -13,6 +13,7 @@ import { LiteracyRoom } from '../components/Games/Literacy/LiteracyRoom'
 import { MathRoom } from '../components/Games/Math/MathRoom'
 import { MusicRoom } from '../components/Games/Music/MusicRoom'
 import { LogicRoom } from '../components/Games/Logic/LogicRoom'
+import { CreativeRoom } from '../components/Games/Creative/CreativeRoom'
 
 // ─── Game Room dispatcher ─────────────────────────────────────────────────────
 //
@@ -33,6 +34,7 @@ const ROOM_REGISTRY: RoomRegistry = {
   math:     MathRoom,
   music:    MusicRoom,
   logic:    LogicRoom,
+  creative: CreativeRoom,
 }
 
 export function GameRoom() {

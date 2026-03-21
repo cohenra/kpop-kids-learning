@@ -31,6 +31,7 @@ export interface Strings {
     social: { name: string; tagline: string }
     nature: { name: string; tagline: string }
     logic: { name: string; tagline: string }
+    creative: { name: string; tagline: string }
   }
   comingSoon: string
   locked: string
@@ -114,6 +115,7 @@ const he: Strings = {
     social: { name: 'חדר הירוק', tagline: 'רגשות וחברים!' },
     nature: { name: 'הגינה', tagline: 'טבע מאחורי הבמה!' },
     logic: { name: 'חדר האתגרים', tagline: 'פתרי חידות!' },
+    creative: { name: 'אזור היצירה', tagline: 'ציור ושירים!' },
   },
   comingSoon: 'בקרוב!',
   locked: 'נעול 🔒',
@@ -194,6 +196,7 @@ const en: Strings = {
     social: { name: 'Green Room', tagline: 'Feelings & friends!' },
     nature: { name: 'The Garden', tagline: 'Nature backstage!' },
     logic: { name: 'Challenge Room', tagline: 'Solve puzzles!' },
+    creative: { name: 'Creative Zone', tagline: 'Draw & sing!' },
   },
   comingSoon: 'Coming Soon!',
   locked: 'Locked 🔒',
