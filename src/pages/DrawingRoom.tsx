@@ -5,15 +5,19 @@ import { useApp } from '../context/AppContext'
 
 // ─── DrawingRoom ──────────────────────────────────────────────────────────────
 //
-// Kids color K-POP themed outlines with their finger.
+// Two modes:
+//   COLOR  — child colors inside pre-drawn black outlines (fill with color)
+//   TRACE  — dotted purple guide lines; child traces with a thin pen to
+//             learn how to draw the shape from scratch
 //
 // Canvas (300×300 internal) under an SVG overlay (pointer-events: none).
-// Pointer events scale coordinates from CSS display size → canvas pixels.
+// In TRACE mode the SVG shows as dashed guide lines; the canvas brush is
+// forced thin + dark so it mimics drawing with a pencil.
 //
 // Layout:
-//   top bar  →  page selector tabs
+//   top bar  →  mode toggle (Color / Trace) + page selector tabs
 //   canvas area  (canvas + SVG overlay stacked)
-//   color palette row
+//   color palette row  (hidden in Trace mode)
 //   brush size + clear + done buttons
 
 const CANVAS_SIZE = 300   // internal canvas resolution
@@ -37,16 +41,23 @@ const PALETTE = [
 
 // ─── Coloring page outlines (SVG paths, viewBox 0 0 200 200) ─────────────────
 
+type StrokeProps = typeof STROKE
 interface PageDef {
   id: string
   titleHe: string
   titleEn: string
   emoji: string
-  outline: React.ReactNode   // SVG children, no fill, black stroke
+  // Receives stroke + strokeThin props so same geometry can render in both modes
+  outline: (s: StrokeProps, sThin: StrokeProps) => React.ReactNode
 }
 
+// Color mode: solid dark outline
 const STROKE = { fill: 'none', stroke: '#1a0a2e', strokeWidth: 4, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const }
 const STROKE_THIN = { ...STROKE, strokeWidth: 2.5 }
+
+// Trace mode: dashed purple guide lines — child traces over these
+const GUIDE = { fill: 'none', stroke: '#9333EA', strokeWidth: 7, strokeLinejoin: 'round' as const, strokeLinecap: 'round' as const, strokeDasharray: '14 10', opacity: 0.6 }
+const GUIDE_THIN = { ...GUIDE, strokeWidth: 5, strokeDasharray: '10 8' }
 
 const PAGES: PageDef[] = [
   {
@@ -54,16 +65,14 @@ const PAGES: PageDef[] = [
     titleHe: 'כוכב קסום',
     titleEn: 'Magic Star',
     emoji: '⭐',
-    outline: (
+    outline: (s, st) => (
       <g>
-        {/* 5-pointed star */}
-        <path d="M 100 18 L 122 76 L 184 76 L 133 113 L 153 171 L 100 136 L 47 171 L 67 113 L 16 76 L 78 76 Z" {...STROKE} />
-        {/* Sparkles around */}
-        <path d="M 30 30 L 33 24 L 36 30 L 30 30" {...STROKE_THIN} />
-        <path d="M 33 24 L 33 18" {...STROKE_THIN} />
-        <path d="M 29 21 L 37 27" {...STROKE_THIN} />
-        <path d="M 170 25 L 173 19 L 176 25 L 170 25" {...STROKE_THIN} />
-        <path d="M 173 19 L 173 13" {...STROKE_THIN} />
+        <path d="M 100 18 L 122 76 L 184 76 L 133 113 L 153 171 L 100 136 L 47 171 L 67 113 L 16 76 L 78 76 Z" {...s} />
+        <path d="M 30 30 L 33 24 L 36 30 L 30 30" {...st} />
+        <path d="M 33 24 L 33 18" {...st} />
+        <path d="M 29 21 L 37 27" {...st} />
+        <path d="M 170 25 L 173 19 L 176 25 L 170 25" {...st} />
+        <path d="M 173 19 L 173 13" {...st} />
       </g>
     ),
   },
@@ -72,19 +81,14 @@ const PAGES: PageDef[] = [
     titleHe: 'מיקרופון כוכבת',
     titleEn: 'Star Microphone',
     emoji: '🎤',
-    outline: (
+    outline: (s, st) => (
       <g>
-        {/* Capsule */}
-        <path d="M 72 35 Q 72 10 100 10 Q 128 10 128 35 L 128 88 Q 128 112 100 112 Q 72 112 72 88 Z" {...STROKE} />
-        {/* Grille lines */}
-        <line x1="74" y1="55" x2="126" y2="55" {...STROKE_THIN} />
-        <line x1="72" y1="75" x2="128" y2="75" {...STROKE_THIN} />
-        {/* Handle */}
-        <rect x="90" y="112" width="20" height="52" rx="6" {...STROKE} />
-        {/* Stand base */}
-        <path d="M 68 164 Q 55 178 62 188 L 138 188 Q 145 178 132 164 Z" {...STROKE} />
-        {/* Stars on capsule */}
-        <path d="M 100 35 L 103 44 L 112 44 L 105 50 L 108 59 L 100 53 L 92 59 L 95 50 L 88 44 L 97 44 Z" {...STROKE_THIN} />
+        <path d="M 72 35 Q 72 10 100 10 Q 128 10 128 35 L 128 88 Q 128 112 100 112 Q 72 112 72 88 Z" {...s} />
+        <line x1="74" y1="55" x2="126" y2="55" {...st} />
+        <line x1="72" y1="75" x2="128" y2="75" {...st} />
+        <rect x="90" y="112" width="20" height="52" rx="6" {...s} />
+        <path d="M 68 164 Q 55 178 62 188 L 138 188 Q 145 178 132 164 Z" {...s} />
+        <path d="M 100 35 L 103 44 L 112 44 L 105 50 L 108 59 L 100 53 L 92 59 L 95 50 L 88 44 L 97 44 Z" {...st} />
       </g>
     ),
   },
@@ -93,22 +97,17 @@ const PAGES: PageDef[] = [
     titleHe: 'כתר מלכה',
     titleEn: 'Queen Crown',
     emoji: '👑',
-    outline: (
+    outline: (s, st) => (
       <g>
-        {/* Crown body */}
-        <path d="M 18 152 L 38 82 L 68 118 L 100 42 L 132 118 L 162 82 L 182 152 Z" {...STROKE} />
-        {/* Base band */}
-        <rect x="18" y="152" width="164" height="30" rx="6" {...STROKE} />
-        {/* Center gem */}
-        <circle cx="100" cy="54" r="13" {...STROKE} />
-        <circle cx="100" cy="54" r="6" {...STROKE_THIN} />
-        {/* Side gems */}
-        <circle cx="44" cy="91" r="9" {...STROKE} />
-        <circle cx="156" cy="91" r="9" {...STROKE} />
-        {/* Small gems on band */}
-        <circle cx="68" cy="167" r="5" {...STROKE_THIN} />
-        <circle cx="100" cy="167" r="5" {...STROKE_THIN} />
-        <circle cx="132" cy="167" r="5" {...STROKE_THIN} />
+        <path d="M 18 152 L 38 82 L 68 118 L 100 42 L 132 118 L 162 82 L 182 152 Z" {...s} />
+        <rect x="18" y="152" width="164" height="30" rx="6" {...s} />
+        <circle cx="100" cy="54" r="13" {...s} />
+        <circle cx="100" cy="54" r="6" {...st} />
+        <circle cx="44" cy="91" r="9" {...s} />
+        <circle cx="156" cy="91" r="9" {...s} />
+        <circle cx="68" cy="167" r="5" {...st} />
+        <circle cx="100" cy="167" r="5" {...st} />
+        <circle cx="132" cy="167" r="5" {...st} />
       </g>
     ),
   },
@@ -117,26 +116,19 @@ const PAGES: PageDef[] = [
     titleHe: 'פרפר יפה',
     titleEn: 'Pretty Butterfly',
     emoji: '🦋',
-    outline: (
+    outline: (s, st) => (
       <g>
-        {/* Left upper wing */}
-        <path d="M 97 95 C 85 72 44 28 18 50 C 8 72 30 112 97 108 Z" {...STROKE} />
-        {/* Left lower wing */}
-        <path d="M 97 108 C 65 118 28 108 22 132 C 16 158 58 164 97 132 Z" {...STROKE} />
-        {/* Right upper wing */}
-        <path d="M 103 95 C 115 72 156 28 182 50 C 192 72 170 112 103 108 Z" {...STROKE} />
-        {/* Right lower wing */}
-        <path d="M 103 108 C 135 118 172 108 178 132 C 184 158 142 164 103 132 Z" {...STROKE} />
-        {/* Body */}
-        <ellipse cx="100" cy="112" rx="6" ry="24" {...STROKE} />
-        {/* Antennae */}
-        <path d="M 96 90 Q 78 64 68 53" {...STROKE_THIN} />
-        <circle cx="67" cy="52" r="5" {...STROKE_THIN} />
-        <path d="M 104 90 Q 122 64 132 53" {...STROKE_THIN} />
-        <circle cx="133" cy="52" r="5" {...STROKE_THIN} />
-        {/* Wing patterns */}
-        <circle cx="62" cy="80" r="10" {...STROKE_THIN} />
-        <circle cx="138" cy="80" r="10" {...STROKE_THIN} />
+        <path d="M 97 95 C 85 72 44 28 18 50 C 8 72 30 112 97 108 Z" {...s} />
+        <path d="M 97 108 C 65 118 28 108 22 132 C 16 158 58 164 97 132 Z" {...s} />
+        <path d="M 103 95 C 115 72 156 28 182 50 C 192 72 170 112 103 108 Z" {...s} />
+        <path d="M 103 108 C 135 118 172 108 178 132 C 184 158 142 164 103 132 Z" {...s} />
+        <ellipse cx="100" cy="112" rx="6" ry="24" {...s} />
+        <path d="M 96 90 Q 78 64 68 53" {...st} />
+        <circle cx="67" cy="52" r="5" {...st} />
+        <path d="M 104 90 Q 122 64 132 53" {...st} />
+        <circle cx="133" cy="52" r="5" {...st} />
+        <circle cx="62" cy="80" r="10" {...st} />
+        <circle cx="138" cy="80" r="10" {...st} />
       </g>
     ),
   },
@@ -145,25 +137,21 @@ const PAGES: PageDef[] = [
     titleHe: 'פרח קסום',
     titleEn: 'Magic Flower',
     emoji: '🌸',
-    outline: (
+    outline: (s, st) => (
       <g>
-        {/* Petals — 6 petals via rotation */}
         {[0, 60, 120, 180, 240, 300].map((angle) => (
           <ellipse
             key={angle}
             cx="100" cy="68" rx="18" ry="32"
             transform={`rotate(${angle} 100 100)`}
-            {...STROKE}
+            {...s}
           />
         ))}
-        {/* Center circle */}
-        <circle cx="100" cy="100" r="22" {...STROKE} />
-        <circle cx="100" cy="100" r="10" {...STROKE_THIN} />
-        {/* Stem */}
-        <line x1="100" y1="122" x2="100" y2="185" {...{ ...STROKE, strokeWidth: 5 }} />
-        {/* Leaves */}
-        <path d="M 100 158 Q 72 148 68 136 Q 80 155 100 158 Z" {...STROKE} />
-        <path d="M 100 158 Q 128 148 132 136 Q 120 155 100 158 Z" {...STROKE} />
+        <circle cx="100" cy="100" r="22" {...s} />
+        <circle cx="100" cy="100" r="10" {...st} />
+        <line x1="100" y1="122" x2="100" y2="185" {...{ ...s, strokeWidth: 5 }} />
+        <path d="M 100 158 Q 72 148 68 136 Q 80 155 100 158 Z" {...s} />
+        <path d="M 100 158 Q 128 148 132 136 Q 120 155 100 158 Z" {...s} />
       </g>
     ),
   },
@@ -176,6 +164,7 @@ export function DrawingRoom() {
   const { language, addSparks, backArrow } = useApp()
   const isHe = language === 'he'
 
+  const [mode, setMode]           = useState<'color' | 'trace'>('color')
   const [pageIdx, setPageIdx]     = useState(0)
   const [color, setColor]         = useState(PALETTE[0])
   const [brushSize, setBrushSize] = useState(14)
@@ -183,17 +172,21 @@ export function DrawingRoom() {
   const [showDone, setShowDone]   = useState(false)
   const sparksGivenRef            = useRef(false)
 
+  // In trace mode, brush is forced to a thin dark pencil
+  const activeColor    = mode === 'trace' ? '#1a0a2e' : color
+  const activeBrush    = mode === 'trace' ? 6         : brushSize
+
   const canvasRef   = useRef<HTMLCanvasElement>(null)
   const paintingRef = useRef(false)
   const lastPos     = useRef<{ x: number; y: number } | null>(null)
 
-  // Clear canvas when page changes
+  // Clear canvas when page or mode changes
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
     setShowDone(false)
-  }, [pageIdx])
+  }, [pageIdx, mode])
 
   // ── Coordinate scaling: CSS pixels → canvas pixels ────────────────────────
   const getCoords = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -210,29 +203,28 @@ export function DrawingRoom() {
     const ctx = canvasRef.current?.getContext('2d')
     if (!ctx) return
     ctx.globalCompositeOperation = 'source-over'
-    ctx.fillStyle = color
+    ctx.fillStyle = activeColor
 
     if (lastPos.current) {
-      // Interpolate between last and current point for a smooth stroke
       const dx = x - lastPos.current.x
       const dy = y - lastPos.current.y
       const dist = Math.sqrt(dx * dx + dy * dy)
-      const steps = Math.max(1, Math.ceil(dist / (brushSize * 0.4)))
+      const steps = Math.max(1, Math.ceil(dist / (activeBrush * 0.4)))
       for (let i = 0; i <= steps; i++) {
         const px = lastPos.current.x + (dx * i) / steps
         const py = lastPos.current.y + (dy * i) / steps
         ctx.beginPath()
-        ctx.arc(px, py, brushSize, 0, Math.PI * 2)
+        ctx.arc(px, py, activeBrush, 0, Math.PI * 2)
         ctx.fill()
       }
     } else {
       ctx.beginPath()
-      ctx.arc(x, y, brushSize, 0, Math.PI * 2)
+      ctx.arc(x, y, activeBrush, 0, Math.PI * 2)
       ctx.fill()
     }
     lastPos.current = { x, y }
-    setShowDone(true)   // show the Done button once they start painting
-  }, [color, brushSize])
+    setShowDone(true)
+  }, [activeColor, activeBrush])
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -303,6 +295,44 @@ export function DrawingRoom() {
         </motion.button>
       </div>
 
+      {/* ── Mode toggle ──────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-center gap-2 px-4 mb-1">
+        {(['color', 'trace'] as const).map((m) => (
+          <motion.button
+            key={m}
+            whileTap={{ scale: 0.92 }}
+            onClick={() => setMode(m)}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border font-bold text-sm"
+            style={{
+              background: mode === m
+                ? 'linear-gradient(135deg, #7C3AED, #EC4899)'
+                : 'rgba(45,42,74,0.6)',
+              borderColor: mode === m ? 'transparent' : 'rgba(255,255,255,0.12)',
+              color: mode === m ? 'white' : 'rgba(255,255,255,0.5)',
+              fontFamily: 'Fredoka One, Nunito, sans-serif',
+              boxShadow: mode === m ? '0 0 12px rgba(124,58,237,0.4)' : 'none',
+            }}
+          >
+            {m === 'color' ? '🎨' : '✏️'}
+            {m === 'color'
+              ? (isHe ? 'צביעה' : 'Color')
+              : (isHe ? 'ציור מודרך' : 'Guided Draw')}
+          </motion.button>
+        ))}
+      </div>
+
+      {/* Trace mode hint */}
+      {mode === 'trace' && (
+        <motion.p
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center text-white/50 text-xs px-4 mb-1"
+          style={{ fontFamily: 'Nunito, Heebo, sans-serif' }}
+        >
+          {isHe ? '✏️ עקבי אחר הקווים המקווקוים!' : '✏️ Trace over the dotted lines!'}
+        </motion.p>
+      )}
+
       {/* ── Page selector tabs ───────────────────────────────────────────── */}
       <div className="flex gap-2 px-4 mb-2 overflow-x-auto scrollable">
         {PAGES.map((p, i) => (
@@ -331,8 +361,12 @@ export function DrawingRoom() {
           style={{
             width: 'min(calc(100vw - 32px), 340px)',
             aspectRatio: '1',
-            background: 'white',
-            boxShadow: '0 0 30px rgba(124,58,237,0.3)',
+            // Trace mode uses a cream paper background so dotted lines stand out
+            background: mode === 'trace' ? '#FFF8F0' : 'white',
+            boxShadow: mode === 'trace'
+              ? '0 0 30px rgba(147,51,234,0.35)'
+              : '0 0 30px rgba(124,58,237,0.3)',
+            transition: 'background 0.3s',
           }}
         >
           {/* Paint canvas */}
@@ -348,43 +382,61 @@ export function DrawingRoom() {
             onPointerLeave={onPointerUp}
           />
 
-          {/* SVG outline overlay — pointer-events: none so paint goes to canvas */}
+          {/* SVG outline/guide overlay — pointer-events: none */}
           <svg
             viewBox="0 0 200 200"
             className="absolute inset-0 w-full h-full"
             style={{ zIndex: 2, pointerEvents: 'none' }}
           >
-            {page.outline}
+            {mode === 'trace'
+              ? page.outline(GUIDE, GUIDE_THIN)
+              : page.outline(STROKE, STROKE_THIN)
+            }
           </svg>
+
+          {/* Trace mode: numbered start-point arrow hint */}
+          {mode === 'trace' && (
+            <svg
+              viewBox="0 0 200 200"
+              className="absolute inset-0 w-full h-full"
+              style={{ zIndex: 3, pointerEvents: 'none' }}
+            >
+              {/* Pulsing "start here" dot */}
+              <circle cx="100" cy="18" r="7" fill="#EC4899" opacity="0.85" />
+              <text x="100" y="22" textAnchor="middle" fontSize="8" fill="white" fontWeight="bold">1</text>
+            </svg>
+          )}
         </div>
       </div>
 
-      {/* ── Color palette ─────────────────────────────────────────────────── */}
-      <div className="px-4 pt-2">
-        <div className="flex flex-wrap gap-2 justify-center">
-          {PALETTE.map((c) => (
-            <motion.button
-              key={c}
-              whileTap={{ scale: 0.85 }}
-              onClick={() => setColor(c)}
-              className="rounded-full border-2 transition-all"
-              style={{
-                width: 32, height: 32,
-                background: c,
-                borderColor: color === c ? '#ffffff' : 'rgba(255,255,255,0.15)',
-                boxShadow: color === c ? `0 0 10px ${c}, 0 0 0 2px white` : 'none',
-                transform: color === c ? 'scale(1.25)' : 'scale(1)',
-              }}
-            />
-          ))}
+      {/* ── Color palette — hidden in trace mode ──────────────────────────── */}
+      {mode === 'color' && (
+        <div className="px-4 pt-2">
+          <div className="flex flex-wrap gap-2 justify-center">
+            {PALETTE.map((c) => (
+              <motion.button
+                key={c}
+                whileTap={{ scale: 0.85 }}
+                onClick={() => setColor(c)}
+                className="rounded-full border-2 transition-all"
+                style={{
+                  width: 32, height: 32,
+                  background: c,
+                  borderColor: color === c ? '#ffffff' : 'rgba(255,255,255,0.15)',
+                  boxShadow: color === c ? `0 0 10px ${c}, 0 0 0 2px white` : 'none',
+                  transform: color === c ? 'scale(1.25)' : 'scale(1)',
+                }}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Brush size + Done ─────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-3 pb-5 safe-bottom gap-3">
-        {/* Brush sizes */}
+        {/* Brush sizes — hidden in trace mode (pen is always thin) */}
         <div className="flex items-center gap-3">
-          {[8, 14, 22].map((size) => (
+          {mode === 'color' && [8, 14, 22].map((size) => (
             <motion.button
               key={size}
               whileTap={{ scale: 0.9 }}
@@ -407,6 +459,14 @@ export function DrawingRoom() {
               />
             </motion.button>
           ))}
+          {mode === 'trace' && (
+            <span
+              className="text-white/40 text-xs"
+              style={{ fontFamily: 'Nunito, Heebo, sans-serif' }}
+            >
+              ✏️ {isHe ? 'עט דק' : 'Fine pen'}
+            </span>
+          )}
         </div>
 
         {/* Done button — appears after first stroke */}

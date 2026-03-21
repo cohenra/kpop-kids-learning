@@ -92,12 +92,28 @@ export function useDailyMissions(): UseDailyMissionsReturn {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProfileId])
 
-  // Build per-mission progress objects
-  const missions: SingleMissionProgress[] = todaysMissions.map((mission) => {
-    const isCompleted = gamesCompletedToday >= mission.gamesRequired
+  // Build per-mission progress objects.
+  //
+  // Missions are SEQUENTIAL: mission i requires completing its own
+  // gamesRequired games ON TOP of the previous missions.
+  // e.g. gamesRequired=2 → need 2 games for M0, 4 total for M1, 6 for M2.
+  //
+  //   gamesCompletedToday 0-1 → M0 in progress
+  //   gamesCompletedToday 2-3 → M1 in progress (M0 done)
+  //   gamesCompletedToday 4-5 → M2 in progress (M0+M1 done)
+  //   gamesCompletedToday 6+  → all done
+  const missions: SingleMissionProgress[] = todaysMissions.map((mission, i) => {
+    const prevThreshold = i * mission.gamesRequired
+    const threshold = (i + 1) * mission.gamesRequired
+    // Games completed within THIS mission's slot only
+    const missionProgress = Math.min(
+      Math.max(0, gamesCompletedToday - prevThreshold),
+      mission.gamesRequired,
+    )
+    const isCompleted = gamesCompletedToday >= threshold
     return {
       mission,
-      gamesCompletedToday,
+      gamesCompletedToday: missionProgress,
       gamesRequired: mission.gamesRequired,
       isCompleted,
     }

@@ -213,10 +213,13 @@ export function NumberRecognition({ onComplete, onBack }: Props) {
             const isCorrect = gi === current.correctGroupIdx
             const isSelected = gi === selectedGroupIdx
 
-            const st =
-              answerState === 'idle' ? 'default'
-              : isCorrect ? 'correct'
-              : isSelected ? 'wrong'
+            // On CORRECT answer: show golden highlight on the right answer.
+            // On WRONG answer: show red on the tapped card, gray out the rest —
+            // do NOT reveal which card was correct.
+            const st: 'default' | 'correct' | 'wrong' | 'disabled' =
+              answerState === 'idle'                     ? 'default'
+              : answerState === 'correct' && isCorrect   ? 'correct'
+              : answerState === 'wrong'   && isSelected  ? 'wrong'
               : 'disabled'
 
             const borderColor =
