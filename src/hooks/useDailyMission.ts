@@ -103,7 +103,12 @@ export function useDailyMissions(): UseDailyMissionsReturn {
     }
   })
 
-  // Award bonus once per mission per day
+  // Award bonus once per mission per day.
+  // Guard: missions may be shorter than 3 if DAILY_MISSIONS pool is ever small.
+  const m0done = missions[0]?.isCompleted ?? false
+  const m1done = missions[1]?.isCompleted ?? false
+  const m2done = missions[2]?.isCompleted ?? false
+
   useEffect(() => {
     missions.forEach((mp, i) => {
       if (!mp.isCompleted) return
@@ -124,7 +129,7 @@ export function useDailyMissions(): UseDailyMissionsReturn {
       })
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [missions[0].isCompleted, missions[1].isCompleted, missions[2].isCompleted])
+  }, [m0done, m1done, m2done])
 
   const anyCompleted = missions.some((m) => m.isCompleted)
 

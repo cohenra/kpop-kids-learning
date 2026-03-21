@@ -71,16 +71,40 @@ function migrateProfile(raw: Profile): Profile {
   }
 }
 
+// ─── Root storage migration ────────────────────────────────────────────────────
+// Ensures fields added after initial release always exist in loaded data.
+// New root-level fields must be listed here with safe fallback values.
+function migrateRoot(raw: AppStorage): AppStorage {
+  // Ensure gameProgress sub-arrays are always real arrays (guarding against
+  // old localStorage snapshots where gameProgress was missing or malformed).
+  const safeGameProgress: AppStorage['gameProgress'] = {
+    1: Array.isArray(raw.gameProgress?.[1]) ? raw.gameProgress![1] : [],
+    2: Array.isArray(raw.gameProgress?.[2]) ? raw.gameProgress![2] : [],
+  }
+
+  return {
+    parentPin:      raw.parentPin      ?? null,
+    roomLocks:      raw.roomLocks      ?? {},
+    profiles:       raw.profiles,
+    activeProfileId: (raw.activeProfileId === 1 || raw.activeProfileId === 2)
+      ? raw.activeProfileId
+      : 1,
+    gameProgress: safeGameProgress,
+  }
+}
+
 function loadRoot(): AppStorage {
   if (_cache) return _cache
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as AppStorage
+      // Migrate root-level fields (new fields added over time)
+      const migrated = migrateRoot(parsed)
       // Migrate each profile that exists
-      if (parsed.profiles[1]) parsed.profiles[1] = migrateProfile(parsed.profiles[1])
-      if (parsed.profiles[2]) parsed.profiles[2] = migrateProfile(parsed.profiles[2])
-      _cache = parsed
+      if (migrated.profiles[1]) migrated.profiles[1] = migrateProfile(migrated.profiles[1])
+      if (migrated.profiles[2]) migrated.profiles[2] = migrateProfile(migrated.profiles[2])
+      _cache = migrated
     } else {
       _cache = createDefaultStorage()
     }
@@ -189,7 +213,7 @@ export function updateProfileBandMembers(id: 1 | 2, members: string[]): void {
 // ─── Game progress helpers ─────────────────────────────────────────────────────
 
 export function getGameProgress(profileId: 1 | 2): GameProgress[] {
-  return loadRoot().gameProgress[profileId]
+  return loadRoot().gameProgress[profileId] ?? []
 }
 
 export function saveGameProgress(profileId: 1 | 2, progress: GameProgress): void {
